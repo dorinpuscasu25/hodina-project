@@ -26,6 +26,7 @@ FROM php-base AS vendor
 COPY composer.json composer.lock ./
 RUN composer install \
     --no-dev \
+    --no-scripts \
     --prefer-dist \
     --no-interaction \
     --no-progress \
@@ -50,6 +51,7 @@ RUN npm ci
 
 COPY . .
 COPY --from=vendor /var/www/html/vendor ./vendor
+RUN php artisan package:discover --ansi
 RUN npm run build
 
 FROM php-base
@@ -58,6 +60,8 @@ COPY . .
 COPY --from=vendor /var/www/html/vendor ./vendor
 COPY --from=frontend /app/public/build ./public/build
 COPY docker/entrypoint.sh /usr/local/bin/hodina-entrypoint
+
+RUN php artisan package:discover --ansi
 
 RUN chmod +x /usr/local/bin/hodina-entrypoint \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
