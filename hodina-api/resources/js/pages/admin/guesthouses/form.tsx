@@ -1,5 +1,6 @@
 import LocaleTabs from '@/components/admin/locale-tabs';
 import InputError from '@/components/input-error';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -13,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { type FormEvent, useState } from 'react';
 
 interface LocaleOption {
@@ -51,6 +52,21 @@ interface GuesthouseFormPageProps {
     guesthouse: GuesthouseFormData;
     locales: LocaleOption[];
     currencyOptions: CurrencyOption[];
+    listings: {
+        experiences: ListingRow[];
+        accommodations: ListingRow[];
+    };
+}
+
+interface ListingRow {
+    id: number;
+    title: string;
+    slug: string;
+    status: string;
+    category_label: string | null;
+    location: string;
+    price_label: string;
+    updated_at: string | null;
 }
 
 const clone = <T,>(value: T): T =>
@@ -64,9 +80,11 @@ export default function GuesthouseFormPage({
     guesthouse,
     locales,
     currencyOptions,
+    listings,
 }: GuesthouseFormPageProps) {
     const isEdit = mode === 'edit' && guesthouse.id !== null;
     const [activeLocale, setActiveLocale] = useState(guesthouse.locale || 'ro');
+    const [processingKey, setProcessingKey] = useState<string | null>(null);
     const form = useForm<GuesthouseFormData>(clone(guesthouse));
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -94,6 +112,50 @@ export default function GuesthouseFormPage({
             preserveScroll: true,
         });
     };
+
+    const updateListingStatus = (
+        type: 'experiences' | 'accommodations',
+        id: number,
+        status: 'draft' | 'published',
+    ) => {
+        if (! guesthouse.id) {
+            return;
+        }
+
+        const key = `${type}-${id}-${status}`;
+        setProcessingKey(key);
+
+        router.patch(
+            `/admin/guesthouses/${guesthouse.id}/${type}/${id}/status`,
+            { status },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onFinish: () => setProcessingKey(null),
+            },
+        );
+    };
+
+    const statusVariant = (status: string) => {
+        switch (status) {
+            case 'published':
+                return 'default';
+            case 'draft':
+                return 'secondary';
+            case 'archived':
+                return 'destructive';
+            default:
+                return 'outline';
+        }
+    };
+
+    const formatDateTime = (value: string | null) =>
+        value
+            ? new Date(value).toLocaleString('ro-RO', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+              })
+            : 'Nespecificat';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -451,6 +513,316 @@ export default function GuesthouseFormPage({
                         </form>
                     </CardContent>
                 </Card>
+
+                {isEdit ? (
+                    <>
+                        <Card className="gap-0 overflow-hidden">
+                            <CardHeader>
+                                <CardTitle>Experiente ale pensiunii</CardTitle>
+                                <CardDescription>
+                                    Hostul le creeaza in draft, iar adminul le
+                                    poate confirma aici prin publicare.
+                                </CardDescription>
+                            </CardHeader>
+
+                            <CardContent className="px-0">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full text-sm">
+                                        <thead className="bg-muted/40 text-left text-muted-foreground">
+                                            <tr>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Titlu
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Categorie
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Locatie
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Pret
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Status
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Actualizat
+                                                </th>
+                                                <th className="px-4 py-3 font-medium text-right">
+                                                    Actiuni
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {listings.experiences.length ===
+                                            0 ? (
+                                                <tr>
+                                                    <td
+                                                        colSpan={7}
+                                                        className="px-4 py-10 text-center text-muted-foreground"
+                                                    >
+                                                        Pensiunea nu are inca
+                                                        experiente.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                listings.experiences.map(
+                                                    (item) => (
+                                                        <tr
+                                                            key={`experience-${item.id}`}
+                                                            className="border-t align-top"
+                                                        >
+                                                            <td className="px-4 py-4">
+                                                                <div className="space-y-1">
+                                                                    <p className="font-medium">
+                                                                        {
+                                                                            item.title
+                                                                        }
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        {
+                                                                            item.slug
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                {item.category_label ||
+                                                                    'Fara categorie'}
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                {item.location ||
+                                                                    'Nespecificata'}
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                {
+                                                                    item.price_label
+                                                                }
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <Badge
+                                                                    variant={statusVariant(
+                                                                        item.status,
+                                                                    )}
+                                                                    className="capitalize"
+                                                                >
+                                                                    {
+                                                                        item.status
+                                                                    }
+                                                                </Badge>
+                                                            </td>
+                                                            <td className="px-4 py-4 text-muted-foreground">
+                                                                {formatDateTime(
+                                                                    item.updated_at,
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <div className="flex justify-end gap-2">
+                                                                    {item.status !==
+                                                                    'published' ? (
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            onClick={() =>
+                                                                                updateListingStatus(
+                                                                                    'experiences',
+                                                                                    item.id,
+                                                                                    'published',
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                processingKey ===
+                                                                                `experiences-${item.id}-published`
+                                                                            }
+                                                                        >
+                                                                            Publish
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() =>
+                                                                                updateListingStatus(
+                                                                                    'experiences',
+                                                                                    item.id,
+                                                                                    'draft',
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                processingKey ===
+                                                                                `experiences-${item.id}-draft`
+                                                                            }
+                                                                        >
+                                                                            Pune draft
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="gap-0 overflow-hidden">
+                            <CardHeader>
+                                <CardTitle>Cazari ale pensiunii</CardTitle>
+                                <CardDescription>
+                                    Adminul poate confirma si cazarile create
+                                    de host, tot din aceasta pagina.
+                                </CardDescription>
+                            </CardHeader>
+
+                            <CardContent className="px-0">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full text-sm">
+                                        <thead className="bg-muted/40 text-left text-muted-foreground">
+                                            <tr>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Titlu
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Tip
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Locatie
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Pret
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Status
+                                                </th>
+                                                <th className="px-4 py-3 font-medium">
+                                                    Actualizat
+                                                </th>
+                                                <th className="px-4 py-3 font-medium text-right">
+                                                    Actiuni
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {listings.accommodations.length ===
+                                            0 ? (
+                                                <tr>
+                                                    <td
+                                                        colSpan={7}
+                                                        className="px-4 py-10 text-center text-muted-foreground"
+                                                    >
+                                                        Pensiunea nu are inca
+                                                        cazari.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                listings.accommodations.map(
+                                                    (item) => (
+                                                        <tr
+                                                            key={`accommodation-${item.id}`}
+                                                            className="border-t align-top"
+                                                        >
+                                                            <td className="px-4 py-4">
+                                                                <div className="space-y-1">
+                                                                    <p className="font-medium">
+                                                                        {
+                                                                            item.title
+                                                                        }
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        {
+                                                                            item.slug
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                {item.category_label ||
+                                                                    'Fara tip'}
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                {item.location ||
+                                                                    'Nespecificata'}
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                {
+                                                                    item.price_label
+                                                                }
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <Badge
+                                                                    variant={statusVariant(
+                                                                        item.status,
+                                                                    )}
+                                                                    className="capitalize"
+                                                                >
+                                                                    {
+                                                                        item.status
+                                                                    }
+                                                                </Badge>
+                                                            </td>
+                                                            <td className="px-4 py-4 text-muted-foreground">
+                                                                {formatDateTime(
+                                                                    item.updated_at,
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <div className="flex justify-end gap-2">
+                                                                    {item.status !==
+                                                                    'published' ? (
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            onClick={() =>
+                                                                                updateListingStatus(
+                                                                                    'accommodations',
+                                                                                    item.id,
+                                                                                    'published',
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                processingKey ===
+                                                                                `accommodations-${item.id}-published`
+                                                                            }
+                                                                        >
+                                                                            Publish
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() =>
+                                                                                updateListingStatus(
+                                                                                    'accommodations',
+                                                                                    item.id,
+                                                                                    'draft',
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                processingKey ===
+                                                                                `accommodations-${item.id}-draft`
+                                                                            }
+                                                                        >
+                                                                            Pune draft
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </>
+                ) : null}
             </div>
         </AppLayout>
     );

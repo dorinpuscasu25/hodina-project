@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\Concerns\InteractsWithAdminTables;
 use App\Http\Controllers\Admin\Concerns\InteractsWithTranslatedFields;
 use App\Http\Controllers\Controller;
+use App\Models\Accommodation;
+use App\Models\Experience;
 use App\Models\Guesthouse;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -63,16 +65,37 @@ class GuesthouseController extends Controller
             'guesthouse' => $this->guesthouseFormData(),
             'locales' => $this->supportedLocaleOptions(),
             'currencyOptions' => $this->currencyOptions(),
+            'listings' => [
+                'experiences' => [],
+                'accommodations' => [],
+            ],
         ]);
     }
 
     public function edit(Guesthouse $guesthouse): Response
     {
+        $guesthouse->load([
+            'experiences.category',
+            'accommodations.type',
+        ]);
+
         return Inertia::render('admin/guesthouses/form', [
             'mode' => 'edit',
             'guesthouse' => $this->guesthouseFormData($guesthouse),
             'locales' => $this->supportedLocaleOptions(),
             'currencyOptions' => $this->currencyOptions(),
+            'listings' => [
+                'experiences' => $guesthouse->experiences
+                    ->sortByDesc('created_at')
+                    ->values()
+                    ->map(fn (Experience $experience) => $this->experienceRow($experience, $guesthouse->locale))
+                    ->all(),
+                'accommodations' => $guesthouse->accommodations
+                    ->sortByDesc('created_at')
+                    ->values()
+                    ->map(fn (Accommodation $accommodation) => $this->accommodationRow($accommodation, $guesthouse->locale))
+                    ->all(),
+            ],
         ]);
     }
 
@@ -86,6 +109,44 @@ class GuesthouseController extends Controller
     public function update(Request $request, Guesthouse $guesthouse): RedirectResponse
     {
         return $this->persist($request, $guesthouse);
+    }
+
+    public function updateExperienceStatus(Request $request, Guesthouse $guesthouse, Experience $experience): RedirectResponse
+    {
+        abort_unless($experience->guesthouse_id === $guesthouse->id, 404);
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::in([
+                Experience::STATUS_DRAFT,
+                Experience::STATUS_PUBLISHED,
+                Experience::STATUS_ARCHIVED,
+            ])],
+        ]);
+
+        $experience->update([
+            'status' => $validated['status'],
+        ]);
+
+        return back();
+    }
+
+    public function updateAccommodationStatus(Request $request, Guesthouse $guesthouse, Accommodation $accommodation): RedirectResponse
+    {
+        abort_unless($accommodation->guesthouse_id === $guesthouse->id, 404);
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::in([
+                Accommodation::STATUS_DRAFT,
+                Accommodation::STATUS_PUBLISHED,
+                Accommodation::STATUS_ARCHIVED,
+            ])],
+        ]);
+
+        $accommodation->update([
+            'status' => $validated['status'],
+        ]);
+
+        return back();
     }
 
     private function persist(Request $request, Guesthouse $guesthouse): RedirectResponse
@@ -235,6 +296,41 @@ class GuesthouseController extends Controller
             'longitude' => '',
             'cover_image' => '',
             'is_active' => true,
+        ];
+    }
+
+    private function experienceRow(Experience $experience, string $locale): array
+    {
+        return [
+            'id' => $experience->id,
+            'title' => $experience->translated('title', $locale)
+                ?: $experience->translated('title', 'ro')
+                ?: $experience->translated('title', 'en')
+                ?: $experience->slug,
+            'slug' => $experience->slug,
+            'status' => $experience->status,
+            'category_label' => $experience->category?->toApiArray($locale)['name'] ?? null,
+            'location' => collect([$experience->city, $experience->country])->filter()->implode(', '),
+            'price_label' => number_format((float) $experience->price_amount, 2).' '.$experience->currency.' / '.
+                ($experience->price_mode === 'per_group' ? 'grup' : 'persoana'),
+            'updated_at' => $experience->updated_at?->toIso8601String(),
+        ];
+    }
+
+    private function accommodationRow(Accommodation $accommodation, string $locale): array
+    {
+        return [
+            'id' => $accommodation->id,
+            'title' => $accommodation->translated('title', $locale)
+                ?: $accommodation->translated('title', 'ro')
+                ?: $accommodation->translated('title', 'en')
+                ?: $accommodation->slug,
+            'slug' => $accommodation->slug,
+            'status' => $accommodation->status,
+            'category_label' => $accommodation->type?->toApiArray($locale)['name'] ?? null,
+            'location' => collect([$accommodation->city, $accommodation->country])->filter()->implode(', '),
+            'price_label' => number_format((float) $accommodation->nightly_rate, 2).' '.$accommodation->currency.' / noapte',
+            'updated_at' => $accommodation->updated_at?->toIso8601String(),
         ];
     }
 

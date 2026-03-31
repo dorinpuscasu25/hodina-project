@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Accommodation;
 use App\Models\Category;
+use App\Models\Experience;
 use App\Models\Guesthouse;
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -151,5 +153,83 @@ class AdminPanelTest extends TestCase
         $this->assertSame($guesthouse->id, $host->guesthouse_id);
 
         Notification::assertSentTo($host, VerifyEmail::class);
+    }
+
+    public function test_admin_can_publish_a_guesthouse_experience(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $guesthouse = Guesthouse::query()->create([
+            'name' => ['ro' => 'Pensiunea Codrilor'],
+            'slug' => 'pensiunea-codrilor',
+            'locale' => 'ro',
+            'currency' => 'MDL',
+            'country' => 'Moldova',
+            'is_active' => true,
+        ]);
+
+        $experience = Experience::query()->create([
+            'guesthouse_id' => $guesthouse->id,
+            'status' => Experience::STATUS_DRAFT,
+            'slug' => 'degustare-la-stana',
+            'title' => ['ro' => 'Degustare la stana'],
+            'country' => 'Moldova',
+            'duration_minutes' => 120,
+            'max_guests' => 8,
+            'price_amount' => 450,
+            'currency' => 'MDL',
+            'price_mode' => 'per_person',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch("/admin/guesthouses/{$guesthouse->id}/experiences/{$experience->id}/status", [
+                'status' => Experience::STATUS_PUBLISHED,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('experiences', [
+            'id' => $experience->id,
+            'status' => Experience::STATUS_PUBLISHED,
+        ]);
+    }
+
+    public function test_admin_can_publish_a_guesthouse_accommodation(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $guesthouse = Guesthouse::query()->create([
+            'name' => ['ro' => 'Pensiunea Nistrului'],
+            'slug' => 'pensiunea-nistrului',
+            'locale' => 'ro',
+            'currency' => 'MDL',
+            'country' => 'Moldova',
+            'is_active' => true,
+        ]);
+
+        $accommodation = Accommodation::query()->create([
+            'guesthouse_id' => $guesthouse->id,
+            'status' => Accommodation::STATUS_DRAFT,
+            'slug' => 'casa-mare',
+            'title' => ['ro' => 'Casa mare'],
+            'country' => 'Moldova',
+            'max_guests' => 4,
+            'bedrooms' => 2,
+            'beds' => 2,
+            'bathrooms' => 1,
+            'units_total' => 1,
+            'min_nights' => 1,
+            'nightly_rate' => 1200,
+            'cleaning_fee' => 0,
+            'currency' => 'MDL',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch("/admin/guesthouses/{$guesthouse->id}/accommodations/{$accommodation->id}/status", [
+                'status' => Accommodation::STATUS_PUBLISHED,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('accommodations', [
+            'id' => $accommodation->id,
+            'status' => Accommodation::STATUS_PUBLISHED,
+        ]);
     }
 }

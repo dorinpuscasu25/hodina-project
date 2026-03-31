@@ -34,6 +34,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('guesthouses', [GuesthouseController::class, 'store'])->name('guesthouses.store');
         Route::get('guesthouses/{guesthouse}/edit', [GuesthouseController::class, 'edit'])->name('guesthouses.edit');
         Route::patch('guesthouses/{guesthouse}', [GuesthouseController::class, 'update'])->name('guesthouses.update');
+        Route::patch('guesthouses/{guesthouse}/experiences/{experience}/status', [GuesthouseController::class, 'updateExperienceStatus'])->name('guesthouses.experiences.status');
+        Route::patch('guesthouses/{guesthouse}/accommodations/{accommodation}/status', [GuesthouseController::class, 'updateAccommodationStatus'])->name('guesthouses.accommodations.status');
 
         Route::get('users', [UserController::class, 'index'])->name('users.index');
         Route::get('users/create', [UserController::class, 'create'])->name('users.create');
