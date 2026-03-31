@@ -32,6 +32,23 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 
+    public function test_inertia_login_requests_receive_a_location_response()
+    {
+        $user = User::factory()->withoutTwoFactor()->create();
+
+        $response = $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'password',
+        ], [
+            'X-Inertia' => 'true',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertStatus(409);
+        $response->assertHeader('X-Inertia-Location', '/dashboard');
+    }
+
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
     {
         if (! Features::canManageTwoFactorAuthentication()) {
@@ -81,6 +98,20 @@ class AuthenticationTest extends TestCase
 
         $this->assertGuest();
         $response->assertRedirect(route('home'));
+    }
+
+    public function test_inertia_logout_requests_receive_a_location_response()
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('logout'), [], [
+            'X-Inertia' => 'true',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ]);
+
+        $this->assertGuest();
+        $response->assertStatus(409);
+        $response->assertHeader('X-Inertia-Location', '/');
     }
 
     public function test_users_are_rate_limited()
