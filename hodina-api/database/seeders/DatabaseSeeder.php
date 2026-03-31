@@ -32,11 +32,11 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        User::firstOrCreate(
-            ['email' => 'admin@hodina.local'],
+        User::updateOrCreate(
+            ['email' => 'admin@hodina.md'],
             [
                 'name' => 'Hodina Admin',
-                'password' => 'password',
+                'password' => 'Hodina@2026',
                 'email_verified_at' => now(),
                 'role' => User::ROLE_ADMIN,
                 'locale' => 'ro',
