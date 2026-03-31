@@ -1,6 +1,28 @@
 services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: hodina-admin-api
+        restart: unless-stopped
+        env_file:
+            - .env
+        environment:
+            CONTAINER_ROLE: app
+            RUN_MIGRATIONS: '${RUN_MIGRATIONS:-false}'
+        ports:
+            - '${APP_PORT:-8000}:8000'
+        depends_on:
+            postgres:
+                condition: service_healthy
+            mailpit:
+                condition: service_started
+        volumes:
+            - 'hodina-api-public-storage:/var/www/html/storage/app/public'
+
     postgres:
         image: 'postgres:16-alpine'
+        container_name: hodina-postgres
         restart: unless-stopped
         ports:
             - '${DB_PORT:-5432}:5432'
@@ -24,10 +46,12 @@ services:
 
     mailpit:
         image: 'axllent/mailpit:latest'
+        container_name: hodina-mailpit
         restart: unless-stopped
         ports:
             - '${MAIL_PORT:-1025}:1025'
             - '${MAILPIT_WEB_PORT:-8025}:8025'
 
 volumes:
+    hodina-api-public-storage:
     hodina-api-postgres-data:

@@ -8,26 +8,41 @@ Laravel API pentru platforma Hodina, construit pentru:
 
 ## Pornire rapida
 
-1. În backend pornește infrastructura proprie:
+1. În backend pornește containerele necesare:
 
 ```bash
 cd hodina-api
 docker compose up -d
 ```
 
-2. Tot în `hodina-api`:
+2. Creează mediul local:
 
 ```bash
 cp .env.example .env
-composer install
 php artisan key:generate
-php artisan migrate --seed
-php artisan serve
 ```
 
-3. Emailurile de verificare se pot vedea în Mailpit:
+3. Backend-ul Laravel rulează doar în containerul `app` prin:
+
+```bash
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+4. Dacă vrei migrare automată la pornirea containerului `app`, setează în `.env`:
+
+```env
+RUN_MIGRATIONS=true
+```
+
+5. Emailurile de verificare se pot vedea în Mailpit:
 
 - [http://localhost:8025](http://localhost:8025)
+
+Containerele rămase în setup:
+
+- `app` pentru Laravel
+- `postgres` pentru baza de date
+- `mailpit` pentru emailuri locale
 
 ## Date demo
 
