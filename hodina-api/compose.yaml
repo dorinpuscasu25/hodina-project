@@ -1,0 +1,33 @@
+services:
+    postgres:
+        image: 'postgres:16-alpine'
+        restart: unless-stopped
+        ports:
+            - '${DB_PORT:-5432}:5432'
+        environment:
+            POSTGRES_DB: '${DB_DATABASE:-hodina}'
+            POSTGRES_USER: '${DB_USERNAME:-hodina}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD:-hodina}'
+        volumes:
+            - 'hodina-api-postgres-data:/var/lib/postgresql/data'
+        healthcheck:
+            test:
+                - CMD
+                - pg_isready
+                - '-q'
+                - '-d'
+                - '${DB_DATABASE:-hodina}'
+                - '-U'
+                - '${DB_USERNAME:-hodina}'
+            retries: 3
+            timeout: 5s
+
+    mailpit:
+        image: 'axllent/mailpit:latest'
+        restart: unless-stopped
+        ports:
+            - '${MAIL_PORT:-1025}:1025'
+            - '${MAILPIT_WEB_PORT:-8025}:8025'
+
+volumes:
+    hodina-api-postgres-data:

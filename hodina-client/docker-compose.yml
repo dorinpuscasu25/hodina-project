@@ -1,0 +1,11 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    ports:
+      - "${CLIENT_PORT:-3000}:80"
+    restart: unless-stopped
+
