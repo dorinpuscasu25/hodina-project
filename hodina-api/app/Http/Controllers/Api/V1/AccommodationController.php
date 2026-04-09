@@ -21,7 +21,7 @@ class AccommodationController extends Controller
         $perPage = min(max((int) $request->integer('per_page', 12), 1), 50);
 
         $query = Accommodation::query()
-            ->with(['guesthouse', 'type', 'amenities'])
+            ->with(['guesthouse', 'type.parent', 'amenities', 'reviews'])
             ->published()
             ->when($request->filled('query'), function ($builder) use ($request) {
                 $needle = '%'.Str::lower($request->string('query')->toString()).'%';
@@ -36,7 +36,10 @@ class AccommodationController extends Controller
                         ->orWhereHas('guesthouse', fn ($guesthouseQuery) => $guesthouseQuery->whereRaw('LOWER(CAST(name AS TEXT)) LIKE ?', [$needle]));
                 });
             })
-            ->when($request->filled('type_id'), fn ($builder) => $builder->where('type_id', $request->integer('type_id')))
+            ->when($request->filled('type_id'), function ($builder) use ($request) {
+                $typeIds = $this->categoryFilterIds($request->integer('type_id'));
+                $builder->whereIn('type_id', $typeIds);
+            })
             ->when($request->filled('guesthouse_id'), fn ($builder) => $builder->where('guesthouse_id', $request->integer('guesthouse_id')))
             ->when($request->filled('city'), fn ($builder) => $builder->where('city', $request->string('city')->toString()))
             ->latest();
@@ -69,7 +72,7 @@ class AccommodationController extends Controller
         abort_unless($accommodation->status === Accommodation::STATUS_PUBLISHED, 404);
 
         $locale = $this->resolveLocale($request);
-        $accommodation->load(['guesthouse', 'type', 'amenities']);
+        $accommodation->load(['guesthouse', 'type.parent', 'amenities', 'reviews.guest']);
         $payload = $accommodation->toDetailArray($locale);
 
         if ($request->filled('starts_at') && $request->filled('ends_at')) {
@@ -89,7 +92,7 @@ class AccommodationController extends Controller
         $guesthouse = $this->hostGuesthouse($request);
 
         $accommodations = Accommodation::query()
-            ->with(['guesthouse', 'type', 'amenities'])
+            ->with(['guesthouse', 'type.parent', 'amenities', 'reviews'])
             ->where('guesthouse_id', $guesthouse->id)
             ->latest()
             ->get();
@@ -104,7 +107,7 @@ class AccommodationController extends Controller
         $guesthouse = $this->hostGuesthouse($request);
         abort_unless($accommodation->guesthouse_id === $guesthouse->id, 404);
 
-        $accommodation->load(['guesthouse', 'type', 'amenities']);
+        $accommodation->load(['guesthouse', 'type.parent', 'amenities', 'reviews.guest']);
 
         return response()->json([
             'data' => $accommodation->toDetailArray($guesthouse->locale),
@@ -315,6 +318,31 @@ class AccommodationController extends Controller
     private function resolveLocale(Request $request): string
     {
         return $request->string('locale')->toString() ?: app()->getLocale();
+    }
+
+    private function categoryFilterIds(?int $categoryId): array
+    {
+        if (! $categoryId) {
+            return [];
+        }
+
+        $root = Category::query()
+            ->with('childrenRecursive')
+            ->findOrFail($categoryId);
+
+        return collect([$root])
+            ->merge($this->flattenCategoryTree($root))
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function flattenCategoryTree(Category $category)
+    {
+        return $category->childrenRecursive->flatMap(function (Category $child) {
+            return collect([$child])->merge($this->flattenCategoryTree($child));
+        });
     }
 
     private function buildUniqueSlug(string $modelClass, string $source, ?int $ignoreId = null): string

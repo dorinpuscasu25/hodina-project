@@ -90,6 +90,11 @@ class Accommodation extends Model
         return $this->morphMany(Booking::class, 'bookable');
     }
 
+    public function reviews(): MorphMany
+    {
+        return $this->morphMany(Review::class, 'reviewable')->latest('published_at');
+    }
+
     public function calendarEvents(): MorphMany
     {
         return $this->morphMany(CalendarEvent::class, 'bookable');
@@ -129,6 +134,8 @@ class Accommodation extends Model
 
     public function toCardArray(?string $locale = null): array
     {
+        $reviews = $this->relationLoaded('reviews') ? $this->reviews : null;
+
         return [
             'id' => $this->id,
             'slug' => $this->slug,
@@ -148,6 +155,8 @@ class Accommodation extends Model
             'cover_image' => MediaUploader::url($this->cover_image),
             'guesthouse' => $this->guesthouse?->toApiArray($locale),
             'type' => $this->type?->toApiArray($locale),
+            'rating_average' => $reviews?->avg('rating'),
+            'reviews_count' => $reviews?->count() ?? 0,
         ];
     }
 
@@ -167,6 +176,9 @@ class Accommodation extends Model
             'house_rules' => $this->translated('house_rules', $locale) ?? [],
             'cancellation_policy' => $this->translated('cancellation_policy', $locale),
             'amenities' => $this->amenities->map(fn (Category $amenity) => $amenity->toApiArray($locale))->values(),
+            'reviews' => $this->relationLoaded('reviews')
+                ? $this->reviews->map(fn (Review $review) => $review->toApiArray())->values()
+                : [],
         ]);
     }
 }

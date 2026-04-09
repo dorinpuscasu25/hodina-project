@@ -20,7 +20,7 @@ class HostBookingController extends Controller
         $guesthouse = $this->hostGuesthouse($request);
 
         $bookings = Booking::query()
-            ->with(['guesthouse', 'guest', 'bookable', 'experienceSession'])
+            ->with(['guesthouse', 'guest', 'bookable', 'experienceSession', 'review.guest'])
             ->where('guesthouse_id', $guesthouse->id)
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->latest()
@@ -36,7 +36,7 @@ class HostBookingController extends Controller
         $guesthouse = $this->hostGuesthouse($request);
         abort_unless($booking->guesthouse_id === $guesthouse->id, 404);
 
-        $booking->load(['guesthouse', 'guest', 'bookable', 'experienceSession', 'conversation.messages.sender']);
+        $booking->load(['guesthouse', 'guest', 'bookable', 'experienceSession', 'conversation.messages.sender', 'review.guest']);
 
         return response()->json([
             'data' => $booking->toApiArray($guesthouse->locale),

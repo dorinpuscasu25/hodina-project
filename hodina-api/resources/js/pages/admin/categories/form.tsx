@@ -26,10 +26,17 @@ interface TypeOption {
     label: string;
 }
 
+interface ParentOption {
+    value: number;
+    label: string;
+    type: string;
+}
+
 interface CategoryFormData {
     id: number | null;
     type: string;
     code: string;
+    parent_id: number | null;
     name: Record<string, string>;
     description: Record<string, string>;
     image_url: string | null;
@@ -45,6 +52,7 @@ interface CategoryFormPageProps {
     mode: 'create' | 'edit';
     category: Omit<CategoryFormData, 'image_file' | 'remove_image'>;
     typeOptions: TypeOption[];
+    parentOptions: ParentOption[];
     locales: LocaleOption[];
 }
 
@@ -58,6 +66,7 @@ export default function CategoryFormPage({
     mode,
     category,
     typeOptions,
+    parentOptions,
     locales,
 }: CategoryFormPageProps) {
     const isEdit = mode === 'edit' && category.id !== null;
@@ -91,7 +100,10 @@ export default function CategoryFormPage({
         event.preventDefault();
 
         if (isEdit) {
-            form.patch(`/admin/categories/${category.id}`, {
+            form.transform((data) => ({
+                ...data,
+                _method: 'patch',
+            })).post(`/admin/categories/${category.id}`, {
                 preserveScroll: true,
                 forceFormData: true,
             });
@@ -123,9 +135,8 @@ export default function CategoryFormPage({
                             {isEdit ? 'Editeaza categorie' : 'Adauga categorie'}
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Fara categorii parinte, cu imagine uploadata din
-                            calculator si stil vizual pentru cardurile din
-                            dashboard.
+                            Configurează categorii și subcategorii cu aceeași
+                            logică de ierarhie folosită apoi în experiențe.
                         </p>
                     </div>
 
@@ -151,10 +162,11 @@ export default function CategoryFormPage({
                                         className={selectClassName}
                                         value={form.data.type}
                                         onChange={(event) =>
-                                            form.setData(
-                                                'type',
-                                                event.target.value,
-                                            )
+                                            form.setData((data) => ({
+                                                ...data,
+                                                type: event.target.value,
+                                                parent_id: null,
+                                            }))
                                         }
                                     >
                                         {typeOptions.map((type) => (
@@ -180,6 +192,48 @@ export default function CategoryFormPage({
                                                 event.target.value,
                                             )
                                         }
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="parent_id">
+                                        Categorie părinte
+                                    </Label>
+                                    <select
+                                        id="parent_id"
+                                        className={selectClassName}
+                                        value={form.data.parent_id ?? ''}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'parent_id',
+                                                event.target.value
+                                                    ? Number(
+                                                          event.target.value,
+                                                      )
+                                                    : null,
+                                            )
+                                        }
+                                    >
+                                        <option value="">
+                                            Fără părinte (categorie principală)
+                                        </option>
+                                        {parentOptions
+                                            .filter(
+                                                (option) =>
+                                                    option.type ===
+                                                    form.data.type,
+                                            )
+                                            .map((option) => (
+                                                <option
+                                                    key={option.value}
+                                                    value={option.value}
+                                                >
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                    </select>
+                                    <InputError
+                                        message={form.errors.parent_id}
                                     />
                                 </div>
 

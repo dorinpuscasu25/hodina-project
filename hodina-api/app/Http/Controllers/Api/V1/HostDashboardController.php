@@ -10,13 +10,15 @@ use App\Models\Experience;
 use App\Models\ExperienceSession;
 use App\Models\Guesthouse;
 use App\Services\ExperienceScheduleService;
+use App\Services\HostAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class HostDashboardController extends Controller
 {
     public function __construct(
-        private readonly ExperienceScheduleService $scheduleService
+        private readonly ExperienceScheduleService $scheduleService,
+        private readonly HostAnalyticsService $analyticsService,
     ) {
     }
 
@@ -27,14 +29,9 @@ class HostDashboardController extends Controller
         return response()->json([
             'data' => [
                 'guesthouse' => $guesthouse->toApiArray($guesthouse->locale),
-                'counts' => [
-                    'experiences' => Experience::query()->where('guesthouse_id', $guesthouse->id)->count(),
-                    'accommodations' => Accommodation::query()->where('guesthouse_id', $guesthouse->id)->count(),
-                    'pending_bookings' => Booking::query()->where('guesthouse_id', $guesthouse->id)->where('status', Booking::STATUS_PENDING)->count(),
-                    'confirmed_bookings' => Booking::query()->where('guesthouse_id', $guesthouse->id)->where('status', Booking::STATUS_CONFIRMED)->count(),
-                ],
+                ...$this->analyticsService->summary($guesthouse),
                 'upcoming_bookings' => Booking::query()
-                    ->with(['guest', 'bookable'])
+                    ->with(['guest', 'bookable', 'review.guest'])
                     ->where('guesthouse_id', $guesthouse->id)
                     ->whereIn('status', Booking::activeStatuses())
                     ->where('starts_at', '>=', now())
@@ -44,6 +41,20 @@ class HostDashboardController extends Controller
                     ->map(fn (Booking $booking) => $booking->toApiArray($guesthouse->locale))
                     ->values(),
             ],
+        ]);
+    }
+
+    public function statistics(Request $request): JsonResponse
+    {
+        $guesthouse = $this->hostGuesthouse($request);
+
+        return response()->json([
+            'data' => $this->analyticsService->statistics($guesthouse, $request->only([
+                'preset',
+                'group_by',
+                'start_date',
+                'end_date',
+            ])),
         ]);
     }
 

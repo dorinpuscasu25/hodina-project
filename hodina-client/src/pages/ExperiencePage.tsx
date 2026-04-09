@@ -8,6 +8,7 @@ import {
   Home,
   MapPin,
   MessageCircle,
+  Star,
   Users,
   X,
 } from 'lucide-react';
@@ -257,6 +258,14 @@ export const ExperiencePage = ({
               </div>
               <h1 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">{listing.title}</h1>
               <div className="flex flex-wrap items-center gap-4 text-gray-600">
+                {(listing.reviews_count ?? 0) > 0 ? (
+                  <div className="flex items-center gap-1">
+                    <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                    <span>
+                      {(listing.rating_average ?? 0).toFixed(1)} · {listing.reviews_count} review-uri
+                    </span>
+                  </div>
+                ) : null}
                 <div className="flex items-center gap-1">
                   <MapPin className="h-5 w-5" />
                   <span>{[listing.city, listing.country].filter(Boolean).join(', ') || 'Moldova'}</span>
@@ -280,6 +289,47 @@ export const ExperiencePage = ({
               <h2 className="mb-4 text-2xl font-bold text-gray-900">{t.experience.overview}</h2>
               <p className="leading-relaxed text-gray-700">{listing.description ?? listing.short_description}</p>
             </div>
+
+            {(listing.reviews ?? []).length > 0 ? (
+              <div className="mb-8 border-t border-gray-200 pt-8">
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Review-uri</h2>
+                    <p className="text-sm text-gray-600">
+                      {(listing.rating_average ?? 0).toFixed(1)} din 5 · {listing.reviews_count ?? 0} review-uri verificate
+                    </p>
+                  </div>
+                  <div className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
+                    Oaspeți reali, rezervări reale
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {(listing.reviews ?? []).slice(0, 6).map((review) => (
+                    <div key={review.id} className="rounded-2xl border border-gray-200 bg-white p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-semibold text-gray-900">{review.guest?.name ?? 'Oaspete Hodina'}</p>
+                          <p className="text-sm text-gray-500">{formatDateTime(review.published_at ?? review.created_at)}</p>
+                        </div>
+                        <div className="flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
+                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                          {review.rating}/5
+                        </div>
+                      </div>
+                      {review.title ? <p className="mt-3 font-medium text-gray-900">{review.title}</p> : null}
+                      <p className="mt-2 leading-7 text-gray-700">{review.comment}</p>
+                      {review.host_reply ? (
+                        <div className="mt-4 rounded-2xl bg-gray-50 p-4">
+                          <p className="text-sm font-semibold text-gray-900">Răspunsul gazdei</p>
+                          <p className="mt-2 text-sm leading-6 text-gray-700">{review.host_reply}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {isExperienceListing(listing) ? (
               <>

@@ -104,6 +104,11 @@ class Experience extends Model
         return $this->morphMany(Booking::class, 'bookable');
     }
 
+    public function reviews(): MorphMany
+    {
+        return $this->morphMany(Review::class, 'reviewable')->latest('published_at');
+    }
+
     public function amenities(): MorphToMany
     {
         return $this->morphToMany(Category::class, 'categoryable')
@@ -118,6 +123,8 @@ class Experience extends Model
 
     public function toCardArray(?string $locale = null): array
     {
+        $reviews = $this->relationLoaded('reviews') ? $this->reviews : null;
+
         return [
             'id' => $this->id,
             'slug' => $this->slug,
@@ -133,6 +140,8 @@ class Experience extends Model
             'cover_image' => MediaUploader::url($this->cover_image),
             'category' => $this->category?->toApiArray($locale),
             'guesthouse' => $this->guesthouse?->toApiArray($locale),
+            'rating_average' => $reviews?->avg('rating'),
+            'reviews_count' => $reviews?->count() ?? 0,
         ];
     }
 
@@ -158,6 +167,9 @@ class Experience extends Model
             'cancellation_policy' => $this->translated('cancellation_policy', $locale),
             'important_notes' => $this->translated('important_notes', $locale),
             'amenities' => $this->amenities->map(fn (Category $amenity) => $amenity->toApiArray($locale))->values(),
+            'reviews' => $this->relationLoaded('reviews')
+                ? $this->reviews->map(fn (Review $review) => $review->toApiArray())->values()
+                : [],
         ]);
     }
 }

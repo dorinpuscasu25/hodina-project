@@ -24,6 +24,7 @@ interface CategoryRow {
     id: number;
     type: string;
     code: string | null;
+    parent_name: string | null;
     image: string | null;
     sort_order: number;
     is_active: boolean;
@@ -122,10 +123,9 @@ export default function CategoriesIndex({
                                     Categorii
                                 </CardTitle>
                                 <CardDescription>
-                                    Catalog tabelar cu search, filtre si
-                                    paginare. Categoriile nu mai au parinti si
-                                    pot primi imagine + background pentru
-                                    selectorul din dashboard.
+                                    Catalog tabelar cu search, filtre,
+                                    paginare și ierarhie categorie /
+                                    subcategorie.
                                 </CardDescription>
                             </div>
 
@@ -201,6 +201,9 @@ export default function CategoriesIndex({
                                             Preview
                                         </th>
                                         <th className="px-4 py-3 font-medium">
+                                            Părinte
+                                        </th>
+                                        <th className="px-4 py-3 font-medium">
                                             Type
                                         </th>
                                         <th className="px-4 py-3 font-medium">
@@ -224,7 +227,7 @@ export default function CategoriesIndex({
                                     {categories.data.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan={9}
+                                                colSpan={10}
                                                 className="px-4 py-10 text-center text-muted-foreground"
                                             >
                                                 Nu exista rezultate.
@@ -282,6 +285,10 @@ export default function CategoriesIndex({
                                                             </span>
                                                         )}
                                                     </div>
+                                                </td>
+                                                <td className="px-4 py-4 text-muted-foreground">
+                                                    {category.parent_name ??
+                                                        'Categorie principală'}
                                                 </td>
                                                 <td className="px-4 py-4 text-muted-foreground">
                                                     {category.type}

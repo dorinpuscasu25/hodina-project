@@ -6,6 +6,7 @@ import UserMenu from './UserMenu';
 
 const navItems = [
   { name: 'Today', path: '/dashboard/today' },
+  { name: 'Statistici', path: '/dashboard/statistics' },
   { name: 'Calendar', path: '/dashboard/calendar' },
   { name: 'Listings', path: '/dashboard/listings' },
   { name: 'Messages', path: '/dashboard/messages' },

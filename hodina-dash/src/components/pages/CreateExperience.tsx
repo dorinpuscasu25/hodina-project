@@ -209,8 +209,29 @@ export default function CreateExperience() {
   };
 
   const selectedCategory = bootstrap?.experience_categories.find(
-    (category) => String(category.id) === form.category_id,
+    (category) =>
+      String(category.id) === form.category_id ||
+      (category.children ?? []).some((child) => String(child.id) === form.category_id),
   );
+  const selectedSubcategory =
+    selectedCategory?.children?.find((child) => String(child.id) === form.category_id) ?? null;
+  const selectedMainCategoryId = selectedSubcategory ? String(selectedCategory?.id ?? '') : form.category_id;
+
+  const handleMainCategoryChange = (value: string) => {
+    const nextCategory = (bootstrap?.experience_categories ?? []).find((category) => String(category.id) === value);
+
+    if (!nextCategory) {
+      updateField('category_id', '');
+      return;
+    }
+
+    if ((nextCategory.children ?? []).length > 0) {
+      updateField('category_id', String(nextCategory.children?.[0]?.id ?? ''));
+      return;
+    }
+
+    updateField('category_id', value);
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -282,15 +303,40 @@ export default function CreateExperience() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#17332d]">Categorie</label>
+                  <label className="mb-2 block text-sm font-medium text-[#17332d]">Categorie principală</label>
                   <select
-                    value={form.category_id}
-                    onChange={(event) => updateField('category_id', event.target.value)}
+                    value={selectedMainCategoryId}
+                    onChange={(event) => handleMainCategoryChange(event.target.value)}
                     className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-[#17332d]"
                     required
                   >
                     <option value="">Alege categoria</option>
                     {(bootstrap?.experience_categories ?? []).map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#17332d]">Subcategorie</label>
+                  <select
+                    value={form.category_id}
+                    onChange={(event) => updateField('category_id', event.target.value)}
+                    className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-[#17332d]"
+                    required
+                    disabled={!selectedCategory}
+                  >
+                    <option value="">
+                      {selectedCategory ? 'Alege subcategoria' : 'Alege mai întâi categoria principală'}
+                    </option>
+                    {(selectedCategory?.children?.length
+                      ? selectedCategory.children
+                      : selectedCategory
+                        ? [selectedCategory]
+                        : []
+                    ).map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>
@@ -550,7 +596,11 @@ export default function CreateExperience() {
                   </div>
                   <div className="space-y-1">
                     <p className="font-semibold text-[#17332d]">{selectedCategory.name}</p>
-                    <p className="text-sm text-[#67776d]">{selectedCategory.description ?? 'Categorie gata de folosit.'}</p>
+                    <p className="text-sm text-[#67776d]">
+                      {selectedSubcategory?.name
+                        ? `${selectedSubcategory.name} · ${selectedSubcategory.description ?? 'Subcategorie selectată'}`
+                        : selectedCategory.description ?? 'Categorie gata de folosit.'}
+                    </p>
                   </div>
                 </div>
               ) : (

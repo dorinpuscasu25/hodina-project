@@ -5,6 +5,7 @@ export interface Category {
   id: number;
   type: string;
   code: string | null;
+  parent_id: number | null;
   name: string;
   description: string | null;
   slug: string | null;
@@ -14,6 +15,7 @@ export interface Category {
     card_background?: string;
     accent_color?: string;
   };
+  children?: Category[];
 }
 
 export interface Guesthouse {
@@ -86,6 +88,8 @@ export interface ExperienceListing {
   cover_image: string | null;
   category: Category | null;
   guesthouse: Guesthouse | null;
+  rating_average?: number | null;
+  reviews_count?: number;
   default_start_time?: string | null;
   default_end_time?: string | null;
   available_days?: string[];
@@ -98,6 +102,7 @@ export interface ExperienceListing {
   cancellation_policy?: string | null;
   important_notes?: string | null;
   amenities?: Category[];
+  reviews?: Review[];
 }
 
 export interface AccommodationListing {
@@ -126,12 +131,15 @@ export interface AccommodationListing {
   cover_image: string | null;
   guesthouse: Guesthouse | null;
   type: Category | null;
+  rating_average?: number | null;
+  reviews_count?: number;
   gallery?: string[];
   highlights?: string[];
   house_rules?: string[];
   cancellation_policy?: string | null;
   amenities?: Category[];
   available_units?: number;
+  reviews?: Review[];
 }
 
 export interface ExperienceSession {
@@ -162,12 +170,18 @@ export interface Booking {
   currency: string;
   subtotal_amount: number;
   total_amount: number;
+  payment_status: string;
+  paid_amount: number;
+  refunded_amount: number;
+  paid_at: string | null;
+  refunded_at: string | null;
   contact_name: string;
   contact_email: string;
   contact_phone: string | null;
   special_requests: string | null;
   host_response: string | null;
   chat_enabled: boolean;
+  can_review: boolean;
   confirmed_at: string | null;
   cancelled_at: string | null;
   guest: UserProfile | null;
@@ -175,6 +189,22 @@ export interface Booking {
   bookable_type: string | null;
   bookable: ExperienceListing | AccommodationListing | null;
   experience_session: ExperienceSession | null;
+  review: Review | null;
+}
+
+export interface Review {
+  id: number;
+  rating: number;
+  title: string | null;
+  comment: string;
+  host_reply: string | null;
+  host_replied_at: string | null;
+  published_at: string | null;
+  created_at: string | null;
+  guest: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 export interface BookingMessage {

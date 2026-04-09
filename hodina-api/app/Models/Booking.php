@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class Booking extends Model
@@ -15,6 +16,9 @@ class Booking extends Model
     public const STATUS_REJECTED = 'rejected';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_COMPLETED = 'completed';
+    public const PAYMENT_PENDING = 'pending';
+    public const PAYMENT_PAID = 'paid';
+    public const PAYMENT_REFUNDED = 'refunded';
 
     protected $fillable = [
         'booking_number',
@@ -33,11 +37,16 @@ class Booking extends Model
         'currency',
         'subtotal_amount',
         'total_amount',
+        'payment_status',
+        'paid_amount',
+        'refunded_amount',
         'contact_name',
         'contact_email',
         'contact_phone',
         'special_requests',
         'host_response',
+        'paid_at',
+        'refunded_at',
         'confirmed_at',
         'rejected_at',
         'cancelled_at',
@@ -51,6 +60,10 @@ class Booking extends Model
             'ends_at' => 'datetime',
             'subtotal_amount' => 'decimal:2',
             'total_amount' => 'decimal:2',
+            'paid_amount' => 'decimal:2',
+            'refunded_amount' => 'decimal:2',
+            'paid_at' => 'datetime',
+            'refunded_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'rejected_at' => 'datetime',
             'cancelled_at' => 'datetime',
@@ -92,6 +105,11 @@ class Booking extends Model
         return $this->hasOne(BookingConversation::class);
     }
 
+    public function review(): HasOne
+    {
+        return $this->hasOne(Review::class);
+    }
+
     public static function activeStatuses(): array
     {
         return [self::STATUS_PENDING, self::STATUS_CONFIRMED];
@@ -105,6 +123,20 @@ class Booking extends Model
     public function isChatEnabled(): bool
     {
         return $this->status === self::STATUS_CONFIRMED || $this->status === self::STATUS_COMPLETED;
+    }
+
+    public function isReviewEligible(?Carbon $reference = null): bool
+    {
+        $reference ??= now();
+
+        return in_array($this->status, [self::STATUS_CONFIRMED, self::STATUS_COMPLETED], true)
+            && $this->ends_at !== null
+            && $this->ends_at->lte($reference);
+    }
+
+    public function netPaidAmount(): float
+    {
+        return max((float) $this->paid_amount - (float) $this->refunded_amount, 0);
     }
 
     public function toApiArray(?string $locale = null): array
@@ -122,12 +154,20 @@ class Booking extends Model
             'currency' => $this->currency,
             'subtotal_amount' => (float) $this->subtotal_amount,
             'total_amount' => (float) $this->total_amount,
+            'payment_status' => $this->payment_status,
+            'paid_amount' => (float) $this->paid_amount,
+            'refunded_amount' => (float) $this->refunded_amount,
+            'paid_at' => $this->paid_at?->toIso8601String(),
+            'refunded_at' => $this->refunded_at?->toIso8601String(),
             'contact_name' => $this->contact_name,
             'contact_email' => $this->contact_email,
             'contact_phone' => $this->contact_phone,
             'special_requests' => $this->special_requests,
             'host_response' => $this->host_response,
             'chat_enabled' => $this->isChatEnabled(),
+            'can_review' => $this->isReviewEligible() && ! $this->relationLoaded('review')
+                ? ! $this->review()->exists()
+                : $this->isReviewEligible() && $this->review === null,
             'confirmed_at' => $this->confirmed_at?->toIso8601String(),
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),
             'guest' => $this->guest?->toApiArray(),
@@ -137,6 +177,7 @@ class Booking extends Model
                 ? $this->bookable->toCardArray($locale)
                 : null,
             'experience_session' => $this->experienceSession?->toApiArray($locale),
+            'review' => $this->review?->toApiArray(),
         ];
     }
 }

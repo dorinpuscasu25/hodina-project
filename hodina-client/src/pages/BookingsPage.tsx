@@ -5,6 +5,7 @@ import { apiRequest, formatApiError } from '../lib/api';
 import { useSeo } from '../lib/seo';
 import { bookingTabStatus, formatCurrency, formatDateTime, humanizeStatus, isExperienceListing } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { ReviewModal } from '../components/ReviewModal';
 import type { Booking } from '../types';
 
 interface BookingsPageProps {
@@ -21,6 +22,8 @@ export const BookingsPage = ({ onNavigate, onRequestAuth, onNotice }: BookingsPa
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [processingBookingId, setProcessingBookingId] = useState<number | null>(null);
+  const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
+  const [isSavingReview, setIsSavingReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadBookings = async () => {
@@ -89,6 +92,31 @@ export const BookingsPage = ({ onNavigate, onRequestAuth, onNotice }: BookingsPa
       setError(formatApiError(resendError));
     } finally {
       setIsResending(false);
+    }
+  };
+
+  const handleReviewSubmit = async (review: { rating: number; title: string; comment: string }) => {
+    if (!token || !reviewBooking) {
+      return;
+    }
+
+    setIsSavingReview(true);
+
+    try {
+      await apiRequest(`/client/bookings/${reviewBooking.id}/review`, {
+        token,
+        method: reviewBooking.review ? 'PUT' : 'POST',
+        body: review,
+      });
+
+      onNotice(reviewBooking.review ? 'Review-ul a fost actualizat.' : 'Review-ul a fost publicat.');
+      await loadBookings();
+      setReviewBooking(null);
+    } catch (reviewError) {
+      setError(formatApiError(reviewError));
+      throw reviewError;
+    } finally {
+      setIsSavingReview(false);
     }
   };
 
@@ -277,8 +305,36 @@ export const BookingsPage = ({ onNavigate, onRequestAuth, onNotice }: BookingsPa
                               {processingBookingId === booking.id ? 'Se anulează...' : t.common.cancel}
                             </button>
                           ) : null}
+
+                          {(booking.can_review || booking.review) ? (
+                            <button
+                              onClick={() => setReviewBooking(booking)}
+                              className="rounded-full border-2 border-amber-300 px-6 py-2 font-semibold text-amber-700 transition-colors hover:bg-amber-50"
+                            >
+                              {booking.review ? 'Editează review' : 'Lasă review'}
+                            </button>
+                          ) : null}
                         </div>
                       </div>
+
+                      {booking.review ? (
+                        <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-[#17332d]">
+                                Review-ul tău: {booking.review.rating}/5
+                              </p>
+                              {booking.review.title ? (
+                                <p className="mt-1 text-sm font-medium text-[#17332d]">{booking.review.title}</p>
+                              ) : null}
+                            </div>
+                            <span className="text-xs text-[#6c7a72]">
+                              {formatDateTime(booking.review.published_at ?? booking.review.created_at)}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-[#55675f]">{booking.review.comment}</p>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -287,6 +343,16 @@ export const BookingsPage = ({ onNavigate, onRequestAuth, onNotice }: BookingsPa
           </div>
         )}
       </div>
+
+      {reviewBooking ? (
+        <ReviewModal
+          experienceTitle={reviewBooking.bookable?.title ?? reviewBooking.booking_number}
+          initialReview={reviewBooking.review}
+          isSubmitting={isSavingReview}
+          onClose={() => setReviewBooking(null)}
+          onSubmit={handleReviewSubmit}
+        />
+      ) : null}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarDays, CheckCircle2, Clock3, Home, Sparkles, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Home, Sparkles, Star, Wallet, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest, formatApiError } from '@/lib/api';
 import type { Booking, DashboardSummary } from '@/lib/types';
@@ -28,6 +29,7 @@ function getBookingTimestamp(value: string | null) {
 }
 
 export default function Today() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -163,6 +165,16 @@ export default function Today() {
       value: summary?.counts.confirmed_bookings ?? 0,
       icon: <CalendarDays className="h-5 w-5" />,
     },
+    {
+      label: 'Încasat',
+      value: `${summary?.financials.paid_revenue ?? 0} ${summary?.guesthouse.currency ?? 'MDL'}`,
+      icon: <Wallet className="h-5 w-5" />,
+    },
+    {
+      label: 'Rating',
+      value: (summary?.highlights.average_rating ?? 0).toFixed(1),
+      icon: <Star className="h-5 w-5" />,
+    },
   ];
 
   return (
@@ -183,7 +195,7 @@ export default function Today() {
         </div>
       ) : null}
 
-      <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         {statCards.map((card) => (
           <div key={card.label} className="rounded-[1.75rem] border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
@@ -194,6 +206,104 @@ export default function Today() {
           </div>
         ))}
       </div>
+
+      {summary ? (
+        <div className="mb-8 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
+          <div className="rounded-[2rem] border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-[#17332d]">Performanță în perioada curentă</h2>
+                <p className="text-sm text-[#6a7a71]">{summary.statistics_preview.period.label}</p>
+              </div>
+              <button
+                onClick={() => navigate('/dashboard/statistics')}
+                className="inline-flex items-center gap-2 rounded-2xl border border-gray-300 px-4 py-2 text-sm font-semibold text-[#17332d] transition hover:bg-gray-50"
+              >
+                Vezi toate statisticile
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-[1.5rem] bg-[#f6faf8] p-4">
+                <p className="text-sm text-[#6f7f76]">Rezervări</p>
+                <p className="mt-2 text-3xl font-semibold text-[#17332d]">{summary.statistics_preview.overview.bookings_total}</p>
+              </div>
+              <div className="rounded-[1.5rem] bg-[#fff8ef] p-4">
+                <p className="text-sm text-[#7d7567]">Venit brut</p>
+                <p className="mt-2 text-3xl font-semibold text-[#17332d]">
+                  {summary.statistics_preview.overview.gross_revenue} {summary.guesthouse.currency}
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] bg-[#eef6ff] p-4">
+                <p className="text-sm text-[#647486]">Încasat</p>
+                <p className="mt-2 text-3xl font-semibold text-[#17332d]">
+                  {summary.statistics_preview.overview.paid_revenue} {summary.guesthouse.currency}
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] bg-[#fff3f1] p-4">
+                <p className="text-sm text-[#85615a]">Clienți unici</p>
+                <p className="mt-2 text-3xl font-semibold text-[#17332d]">{summary.statistics_preview.overview.unique_clients}</p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-medium text-[#17332d]">Trend rezervări și venituri</p>
+                <p className="text-xs text-[#6b7a72]">{summary.statistics_preview.period.group_by}</p>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {summary.statistics_preview.trend.map((point) => {
+                  const maxBookings = Math.max(...summary.statistics_preview.trend.map((item) => item.bookings), 1);
+                  const height = Math.max((point.bookings / maxBookings) * 120, point.bookings > 0 ? 14 : 6);
+
+                  return (
+                    <div key={`${point.start}-${point.label}`} className="flex min-w-14 flex-col items-center gap-2">
+                      <div className="flex h-32 w-14 items-end justify-center rounded-2xl bg-[#f7faf8] px-1 py-2">
+                        <div
+                          className="w-full rounded-full bg-[#17332d]"
+                          style={{ height }}
+                          title={`${point.label}: ${point.bookings} rezervări`}
+                        />
+                      </div>
+                      <span className="text-[11px] text-[#697a71]">{point.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-semibold text-[#17332d]">Feedback recent</h2>
+            <p className="mt-1 text-sm text-[#6a7a71]">Ultimele review-uri lăsate de oaspeți.</p>
+
+            <div className="mt-5 space-y-4">
+              {summary.recent_reviews.length === 0 ? (
+                <div className="rounded-[1.5rem] border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-[#6a7a71]">
+                  Încă nu există review-uri publicate.
+                </div>
+              ) : (
+                summary.recent_reviews.map((review) => (
+                  <div key={review.id} className="rounded-[1.5rem] border border-gray-200 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-[#17332d]">{review.guest?.name ?? 'Oaspete Hodina'}</p>
+                        <p className="text-xs text-[#6d7c74]">{formatDate(review.published_at ?? review.created_at)}</p>
+                      </div>
+                      <div className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
+                        {review.rating}/5
+                      </div>
+                    </div>
+                    {review.title ? <p className="mt-3 text-sm font-medium text-[#17332d]">{review.title}</p> : null}
+                    <p className="mt-2 text-sm leading-6 text-[#5d6f66]">{review.comment}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-[2rem] border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

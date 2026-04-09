@@ -28,20 +28,8 @@ class ExperienceController extends Controller
         return response()->json([
             'data' => [
                 'locales' => config('hodina.supported_locales'),
-                'experience_categories' => Category::query()
-                    ->active()
-                    ->ofType(Category::TYPE_EXPERIENCE_CATEGORY)
-                    ->orderBy('sort_order')
-                    ->get()
-                    ->map(fn (Category $item) => $item->toApiArray($locale))
-                    ->values(),
-                'accommodation_types' => Category::query()
-                    ->active()
-                    ->ofType(Category::TYPE_ACCOMMODATION_TYPE)
-                    ->orderBy('sort_order')
-                    ->get()
-                    ->map(fn (Category $item) => $item->toApiArray($locale))
-                    ->values(),
+                'experience_categories' => $this->categoryTree(Category::TYPE_EXPERIENCE_CATEGORY, $locale),
+                'accommodation_types' => $this->categoryTree(Category::TYPE_ACCOMMODATION_TYPE, $locale),
                 'amenities' => Category::query()
                     ->active()
                     ->ofType(Category::TYPE_AMENITY)
@@ -59,7 +47,7 @@ class ExperienceController extends Controller
         $perPage = min(max((int) $request->integer('per_page', 12), 1), 50);
 
         $experiences = Experience::query()
-            ->with(['guesthouse', 'category', 'amenities'])
+            ->with(['guesthouse', 'category.parent', 'amenities', 'reviews'])
             ->published()
             ->when($request->filled('query'), function ($query) use ($request) {
                 $needle = '%'.Str::lower($request->string('query')->toString()).'%';
@@ -74,7 +62,10 @@ class ExperienceController extends Controller
                         ->orWhereHas('guesthouse', fn ($guesthouseQuery) => $guesthouseQuery->whereRaw('LOWER(CAST(name AS TEXT)) LIKE ?', [$needle]));
                 });
             })
-            ->when($request->filled('category_id'), fn ($query) => $query->where('category_id', $request->integer('category_id')))
+            ->when($request->filled('category_id'), function ($query) use ($request) {
+                $categoryIds = $this->categoryFilterIds($request->integer('category_id'));
+                $query->whereIn('category_id', $categoryIds);
+            })
             ->when($request->filled('guesthouse_id'), fn ($query) => $query->where('guesthouse_id', $request->integer('guesthouse_id')))
             ->when($request->filled('city'), fn ($query) => $query->where('city', $request->string('city')->toString()))
             ->latest()
@@ -97,7 +88,7 @@ class ExperienceController extends Controller
         abort_unless($experience->status === Experience::STATUS_PUBLISHED, 404);
 
         $locale = $this->resolveLocale($request);
-        $experience->load(['guesthouse', 'category', 'amenities', 'sessions']);
+        $experience->load(['guesthouse', 'category.parent', 'amenities', 'sessions', 'reviews.guest']);
 
         return response()->json([
             'data' => $experience->toDetailArray($locale),
@@ -129,7 +120,7 @@ class ExperienceController extends Controller
         $locale = $guesthouse->locale;
 
         $experiences = Experience::query()
-            ->with(['guesthouse', 'category', 'amenities'])
+            ->with(['guesthouse', 'category.parent', 'amenities', 'reviews'])
             ->where('guesthouse_id', $guesthouse->id)
             ->latest()
             ->get();
@@ -144,7 +135,7 @@ class ExperienceController extends Controller
         $guesthouse = $this->hostGuesthouse($request);
         abort_unless($experience->guesthouse_id === $guesthouse->id, 404);
 
-        $experience->load(['guesthouse', 'category', 'amenities', 'recurrences', 'sessions']);
+        $experience->load(['guesthouse', 'category.parent', 'amenities', 'recurrences', 'sessions', 'reviews.guest']);
 
         return response()->json([
             'data' => $experience->toDetailArray($guesthouse->locale),
@@ -353,6 +344,48 @@ class ExperienceController extends Controller
     private function resolveLocale(Request $request): string
     {
         return $request->string('locale')->toString() ?: app()->getLocale();
+    }
+
+    private function categoryTree(string $type, string $locale)
+    {
+        return Category::query()
+            ->active()
+            ->ofType($type)
+            ->whereNull('parent_id')
+            ->with(['childrenRecursive' => fn ($query) => $query
+                ->active()
+                ->orderBy('sort_order')
+                ->orderBy('id')])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Category $item) => $item->toNestedApiArray($locale))
+            ->values();
+    }
+
+    private function categoryFilterIds(?int $categoryId): array
+    {
+        if (! $categoryId) {
+            return [];
+        }
+
+        $root = Category::query()
+            ->with('childrenRecursive')
+            ->findOrFail($categoryId);
+
+        return collect([$root])
+            ->merge($this->flattenCategoryTree($root))
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function flattenCategoryTree(Category $category)
+    {
+        return $category->childrenRecursive->flatMap(function (Category $child) {
+            return collect([$child])->merge($this->flattenCategoryTree($child));
+        });
     }
 
     private function buildUniqueSlug(string $modelClass, string $source, ?int $ignoreId = null): string

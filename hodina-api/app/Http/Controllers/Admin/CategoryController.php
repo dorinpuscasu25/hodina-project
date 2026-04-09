@@ -34,6 +34,7 @@ class CategoryController extends Controller
         }
 
         $categories = Category::query()
+            ->with('parent')
             ->when($type, fn ($query) => $query->where('type', $type))
             ->when($search, function ($query) use ($like) {
                 $query->where(function ($nestedQuery) use ($like) {
@@ -68,6 +69,7 @@ class CategoryController extends Controller
             'mode' => 'create',
             'category' => $this->categoryFormData(),
             'typeOptions' => $this->typeOptions(),
+            'parentOptions' => $this->parentOptions(),
             'locales' => $this->supportedLocaleOptions(),
         ]);
     }
@@ -78,6 +80,7 @@ class CategoryController extends Controller
             'mode' => 'edit',
             'category' => $this->categoryFormData($category),
             'typeOptions' => $this->typeOptions(),
+            'parentOptions' => $this->parentOptions($category),
             'locales' => $this->supportedLocaleOptions(),
         ]);
     }
@@ -101,6 +104,7 @@ class CategoryController extends Controller
                 Category::TYPE_AMENITY,
             ])],
             'code' => ['nullable', 'string', 'max:100'],
+            'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
             'image_file' => ['nullable', 'image', 'max:5120'],
             'remove_image' => ['nullable', 'boolean'],
             'card_background' => ['nullable', 'string', 'max:40'],
@@ -118,6 +122,16 @@ class CategoryController extends Controller
 
         $validated = $request->validate($rules);
 
+        $parentId = $validated['parent_id'] ?? null;
+
+        if ($parentId) {
+            abort_if($category->exists && (int) $category->id === (int) $parentId, 422, 'Categoria nu poate fi părinte pentru ea însăși.');
+
+            $parent = Category::query()->findOrFail($parentId);
+            abort_unless($parent->type === $validated['type'], 422, 'Subcategoria trebuie să aibă același tip ca părintele.');
+            abort_if($this->createsCycle($category, $parent), 422, 'Nu poți muta categoria sub propria ei subcategorie.');
+        }
+
         if ($request->boolean('remove_image')) {
             MediaUploader::delete($category->image);
             $category->image = null;
@@ -132,7 +146,7 @@ class CategoryController extends Controller
         $category->fill([
             'type' => $validated['type'],
             'code' => $validated['code'] ?? null,
-            'parent_id' => null,
+            'parent_id' => $parentId,
             'name' => $this->normalizeTranslations($validated['name']),
             'description' => $this->normalizeTranslations($validated['description'] ?? []),
             'is_active' => $validated['is_active'],
@@ -154,6 +168,7 @@ class CategoryController extends Controller
             'id' => $category->id,
             'type' => $category->type,
             'code' => $category->code,
+            'parent_name' => $category->parent?->translated('name', 'ro') ?: $category->parent?->translated('name', 'en'),
             'image' => MediaUploader::url($category->image),
             'sort_order' => $category->sort_order,
             'is_active' => $category->is_active,
@@ -173,6 +188,7 @@ class CategoryController extends Controller
                 'id' => $category->id,
                 'type' => $category->type,
                 'code' => $category->code ?? '',
+                'parent_id' => $category->parent_id,
                 'name' => $this->translationsFor($category, 'name'),
                 'description' => $this->translationsFor($category, 'description'),
                 'image_url' => MediaUploader::url($category->image),
@@ -187,6 +203,7 @@ class CategoryController extends Controller
             'id' => null,
             'type' => Category::TYPE_EXPERIENCE_CATEGORY,
             'code' => '',
+            'parent_id' => null,
             'name' => $this->emptyTranslations(),
             'description' => $this->emptyTranslations(),
             'image_url' => null,
@@ -195,6 +212,46 @@ class CategoryController extends Controller
             'card_background' => '#eefbf2',
             'accent_color' => '#0f8f47',
         ];
+    }
+
+    private function parentOptions(?Category $category = null): array
+    {
+        return Category::query()
+            ->orderBy('type')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->reject(fn (Category $item) => $category && (int) $item->id === (int) $category->id)
+            ->map(fn (Category $item) => [
+                'value' => $item->id,
+                'label' => sprintf(
+                    '%s%s',
+                    $item->translated('name', 'ro') ?: $item->translated('name', 'en') ?: 'Categorie',
+                    $item->parent_id ? ' · subcategorie' : ''
+                ),
+                'type' => $item->type,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function createsCycle(Category $category, Category $parent): bool
+    {
+        if (! $category->exists) {
+            return false;
+        }
+
+        $current = $parent;
+
+        while ($current) {
+            if ((int) $current->id === (int) $category->id) {
+                return true;
+            }
+
+            $current = $current->parent;
+        }
+
+        return false;
     }
 
     private function typeOptions(): array

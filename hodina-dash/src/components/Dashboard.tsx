@@ -7,6 +7,7 @@ import CreateExperience from './pages/CreateExperience';
 import Listings from './pages/Listings';
 import Messages from './pages/Messages';
 import OrganizationSettings from './pages/OrganizationSettings';
+import Statistics from './pages/Statistics';
 import Today from './pages/Today';
 
 export default function Dashboard() {
@@ -17,6 +18,7 @@ export default function Dashboard() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard/today" replace />} />
           <Route path="/today" element={<Today />} />
+          <Route path="/statistics" element={<Statistics />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/listings" element={<Listings />} />
           <Route path="/settings" element={<OrganizationSettings />} />

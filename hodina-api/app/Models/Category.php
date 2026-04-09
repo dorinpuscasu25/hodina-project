@@ -63,6 +63,15 @@ class Category extends Model
         return $this->hasMany(self::class, 'parent_id');
     }
 
+    public function childrenRecursive(): HasMany
+    {
+        return $this->children()
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->with('childrenRecursive');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -79,12 +88,30 @@ class Category extends Model
             'id' => $this->id,
             'type' => $this->type,
             'code' => $this->code,
+            'parent_id' => $this->parent_id,
             'name' => $this->translated('name', $locale),
             'description' => $this->translated('description', $locale),
             'slug' => $this->translated('slug', $locale),
             'image' => MediaUploader::url($this->image),
             'sort_order' => $this->sort_order,
             'settings' => $this->settings ?? [],
+            'children' => $this->relationLoaded('children')
+                ? $this->children->map(fn (self $child) => $child->toApiArray($locale))->values()->all()
+                : [],
+        ];
+    }
+
+    public function toNestedApiArray(?string $locale = null): array
+    {
+        return [
+            ...$this->toApiArray($locale),
+            'children' => $this->relationLoaded('childrenRecursive')
+                ? $this->childrenRecursive->map(fn (self $child) => $child->toNestedApiArray($locale))->values()->all()
+                : (
+                    $this->relationLoaded('children')
+                        ? $this->children->map(fn (self $child) => $child->toNestedApiArray($locale))->values()->all()
+                        : []
+                ),
         ];
     }
 }

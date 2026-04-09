@@ -2,6 +2,7 @@ export interface Category {
   id: number;
   type: string;
   code: string | null;
+  parent_id: number | null;
   name: string;
   description: string | null;
   slug: string | null;
@@ -11,6 +12,7 @@ export interface Category {
     card_background?: string;
     accent_color?: string;
   };
+  children?: Category[];
 }
 
 export interface Guesthouse {
@@ -83,6 +85,8 @@ export interface ExperienceListing {
   cover_image: string | null;
   category: Category | null;
   guesthouse: Guesthouse | null;
+  rating_average?: number | null;
+  reviews_count?: number;
   default_start_time?: string | null;
   default_end_time?: string | null;
   available_days?: string[];
@@ -95,6 +99,7 @@ export interface ExperienceListing {
   cancellation_policy?: string | null;
   important_notes?: string | null;
   amenities?: Category[];
+  reviews?: Review[];
 }
 
 export interface AccommodationListing {
@@ -123,11 +128,14 @@ export interface AccommodationListing {
   cover_image: string | null;
   guesthouse: Guesthouse | null;
   type: Category | null;
+  rating_average?: number | null;
+  reviews_count?: number;
   gallery?: string[];
   highlights?: string[];
   house_rules?: string[];
   cancellation_policy?: string | null;
   amenities?: Category[];
+  reviews?: Review[];
 }
 
 export interface Booking {
@@ -143,12 +151,18 @@ export interface Booking {
   currency: string;
   subtotal_amount: number;
   total_amount: number;
+  payment_status: string;
+  paid_amount: number;
+  refunded_amount: number;
+  paid_at: string | null;
+  refunded_at: string | null;
   contact_name: string;
   contact_email: string;
   contact_phone: string | null;
   special_requests: string | null;
   host_response: string | null;
   chat_enabled: boolean;
+  can_review: boolean;
   confirmed_at: string | null;
   cancelled_at: string | null;
   guest: UserProfile | null;
@@ -161,6 +175,22 @@ export interface Booking {
     ends_at: string | null;
     status: string;
     title_override?: string | null;
+  } | null;
+  review: Review | null;
+}
+
+export interface Review {
+  id: number;
+  rating: number;
+  title: string | null;
+  comment: string;
+  host_reply: string | null;
+  host_replied_at: string | null;
+  published_at: string | null;
+  created_at: string | null;
+  guest: {
+    id: number;
+    name: string;
   } | null;
 }
 
@@ -230,7 +260,82 @@ export interface DashboardSummary {
     pending_bookings: number;
     confirmed_bookings: number;
   };
+  financials: {
+    gross_revenue: number;
+    paid_revenue: number;
+    refunded_amount: number;
+    outstanding_amount: number;
+  };
+  highlights: {
+    today_check_ins: number;
+    today_check_outs: number;
+    unique_clients: number;
+    average_rating: number;
+    reviews_count: number;
+  };
+  statistics_preview: DashboardStatistics;
+  recent_reviews: Review[];
   upcoming_bookings: Booking[];
+}
+
+export interface DashboardStatistics {
+  period: {
+    preset: string;
+    group_by: 'day' | 'week' | 'month';
+    start_date: string;
+    end_date: string;
+    label: string;
+  };
+  overview: {
+    bookings_total: number;
+    confirmed_bookings: number;
+    pending_bookings: number;
+    cancelled_bookings: number;
+    completed_stays: number;
+    guests_total: number;
+    unique_clients: number;
+    gross_revenue: number;
+    paid_revenue: number;
+    refunded_amount: number;
+    outstanding_amount: number;
+    average_booking_value: number;
+    reviews_count: number;
+    average_rating: number;
+    confirmation_rate: number;
+  };
+  trend: Array<{
+    start: string;
+    end: string;
+    label: string;
+    bookings: number;
+    guests: number;
+    gross_revenue: number;
+    paid_revenue: number;
+  }>;
+  booking_statuses: Array<{
+    status: string;
+    label: string;
+    value: number;
+  }>;
+  bookable_types: Array<{
+    type: string;
+    label: string;
+    value: number;
+    gross_revenue: number;
+    paid_revenue: number;
+  }>;
+  top_listings: Array<{
+    id: number;
+    type: string;
+    title: string | null;
+    cover_image: string | null;
+    bookings: number;
+    gross_revenue: number;
+    paid_revenue: number;
+    reviews_count: number;
+    average_rating: number;
+  }>;
+  recent_reviews: Review[];
 }
 
 export interface OrganizationMember extends UserProfile {

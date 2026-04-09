@@ -56,10 +56,13 @@ class BookingService
                 'currency' => $experience->currency,
                 'subtotal_amount' => $subtotal,
                 'total_amount' => $subtotal,
+                'payment_status' => $status === Booking::STATUS_CONFIRMED ? Booking::PAYMENT_PAID : Booking::PAYMENT_PENDING,
+                'paid_amount' => $status === Booking::STATUS_CONFIRMED ? $subtotal : 0,
                 'contact_name' => $payload['contact_name'],
                 'contact_email' => $payload['contact_email'],
                 'contact_phone' => $payload['contact_phone'] ?? null,
                 'special_requests' => $payload['special_requests'] ?? null,
+                'paid_at' => $status === Booking::STATUS_CONFIRMED ? now() : null,
                 'confirmed_at' => $status === Booking::STATUS_CONFIRMED ? now() : null,
             ]);
 
@@ -72,7 +75,7 @@ class BookingService
                 );
             }
 
-            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'experienceSession']);
+            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'experienceSession', 'review']);
         });
     }
 
@@ -119,10 +122,13 @@ class BookingService
                 'currency' => $accommodation->currency,
                 'subtotal_amount' => $subtotal,
                 'total_amount' => $subtotal,
+                'payment_status' => $status === Booking::STATUS_CONFIRMED ? Booking::PAYMENT_PAID : Booking::PAYMENT_PENDING,
+                'paid_amount' => $status === Booking::STATUS_CONFIRMED ? $subtotal : 0,
                 'contact_name' => $payload['contact_name'],
                 'contact_email' => $payload['contact_email'],
                 'contact_phone' => $payload['contact_phone'] ?? null,
                 'special_requests' => $payload['special_requests'] ?? null,
+                'paid_at' => $status === Booking::STATUS_CONFIRMED ? now() : null,
                 'confirmed_at' => $status === Booking::STATUS_CONFIRMED ? now() : null,
             ]);
 
@@ -133,7 +139,7 @@ class BookingService
                 );
             }
 
-            return $booking->fresh(['guesthouse', 'guest', 'bookable']);
+            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'review']);
         });
     }
 
@@ -151,6 +157,11 @@ class BookingService
             $booking->update([
                 'status' => Booking::STATUS_CONFIRMED,
                 'host_response' => $hostResponse,
+                'payment_status' => Booking::PAYMENT_PAID,
+                'paid_amount' => $booking->total_amount,
+                'paid_at' => now(),
+                'refunded_amount' => 0,
+                'refunded_at' => null,
                 'confirmed_at' => now(),
                 'rejected_at' => null,
             ]);
@@ -160,7 +171,7 @@ class BookingService
                 ['opened_at' => now()]
             );
 
-            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'experienceSession']);
+            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'experienceSession', 'review']);
         });
     }
 
@@ -180,10 +191,13 @@ class BookingService
             $booking->update([
                 'status' => Booking::STATUS_REJECTED,
                 'host_response' => $hostResponse,
+                'payment_status' => $booking->paid_amount > 0 ? Booking::PAYMENT_REFUNDED : Booking::PAYMENT_PENDING,
+                'refunded_amount' => $booking->paid_amount,
+                'refunded_at' => $booking->paid_amount > 0 ? now() : null,
                 'rejected_at' => now(),
             ]);
 
-            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'experienceSession']);
+            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'experienceSession', 'review']);
         });
     }
 
@@ -203,10 +217,13 @@ class BookingService
             $booking->update([
                 'status' => Booking::STATUS_CANCELLED,
                 'host_response' => $message,
+                'payment_status' => $booking->paid_amount > 0 ? Booking::PAYMENT_REFUNDED : Booking::PAYMENT_PENDING,
+                'refunded_amount' => $booking->paid_amount,
+                'refunded_at' => $booking->paid_amount > 0 ? now() : null,
                 'cancelled_at' => now(),
             ]);
 
-            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'experienceSession']);
+            return $booking->fresh(['guesthouse', 'guest', 'bookable', 'experienceSession', 'review']);
         });
     }
 

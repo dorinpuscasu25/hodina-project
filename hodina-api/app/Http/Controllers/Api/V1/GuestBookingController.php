@@ -21,7 +21,7 @@ class GuestBookingController extends Controller
     {
         $bookings = $request->user()
             ->guestBookings()
-            ->with(['guesthouse', 'experienceSession', 'bookable'])
+            ->with(['guesthouse', 'experienceSession', 'bookable', 'review.guest'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->latest()
             ->get();
@@ -35,7 +35,7 @@ class GuestBookingController extends Controller
     {
         abort_unless($booking->guest_user_id === $request->user()->id, 404);
 
-        $booking->load(['guesthouse', 'experienceSession', 'bookable', 'conversation.messages.sender']);
+        $booking->load(['guesthouse', 'experienceSession', 'bookable', 'conversation.messages.sender', 'review.guest']);
 
         return response()->json([
             'data' => $booking->toApiArray($request->user()->locale),

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\ExperienceController;
 use App\Http\Controllers\Api\V1\GuesthouseController;
 use App\Http\Controllers\Api\V1\GuestBookingController;
+use App\Http\Controllers\Api\V1\GuestReviewController;
 use App\Http\Controllers\Api\V1\HostBookingController;
 use App\Http\Controllers\Api\V1\HostDashboardController;
 use App\Http\Controllers\Api\V1\HostOrganizationController;
@@ -51,6 +52,7 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/experiences/{session}', [GuestBookingController::class, 'storeExperienceBooking']);
         Route::post('bookings/accommodations/{accommodation}', [GuestBookingController::class, 'storeAccommodationBooking']);
         Route::post('bookings/{booking}/cancel', [GuestBookingController::class, 'cancel']);
+        Route::match(['post', 'put'], 'bookings/{booking}/review', [GuestReviewController::class, 'storeOrUpdate']);
 
         Route::get('bookings/{booking}/messages', [ConversationController::class, 'indexForGuest']);
         Route::post('bookings/{booking}/messages', [ConversationController::class, 'storeForGuest']);
@@ -58,6 +60,7 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware(['auth:sanctum', 'verified', 'role:host'])->prefix('host')->group(function () {
         Route::get('dashboard', [HostDashboardController::class, 'summary']);
+        Route::get('dashboard/statistics', [HostDashboardController::class, 'statistics']);
         Route::get('calendar', [HostDashboardController::class, 'calendar']);
         Route::post('calendar/events', [HostDashboardController::class, 'storeCalendarEvent']);
         Route::patch('calendar/events/{event}', [HostDashboardController::class, 'updateCalendarEvent']);
