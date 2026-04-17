@@ -34,7 +34,7 @@ export default function Dashboard() {
                                 <p className="max-w-2xl text-sm text-slate-200">
                                     Acest panou web gestioneaza doar accesul de
                                     administrare si setarile contului. Clientii
-                                    si pensiunile folosesc frontendurile lor
+                                    si hostsle folosesc frontendurile lor
                                     dedicate, conectate prin API.
                                 </p>
                             </div>

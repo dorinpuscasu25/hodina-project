@@ -66,10 +66,10 @@ export const GuesthousePage = ({ guesthouseIdentifier, onNavigate }: GuesthouseP
   }, [payload]);
 
   useSeo({
-    title: payload ? `${payload.guesthouse.name} in ${payload.guesthouse.city ?? 'Moldova'}` : 'Pensiune în Moldova',
+    title: payload ? `${payload.guesthouse.name} in ${payload.guesthouse.city ?? 'Moldova'}` : 'Host în Moldova',
     description:
       payload?.guesthouse.description ||
-      'Descoperă experiențele și cazăriile unei pensiuni locale din Moldova pe Hodina.',
+      'Descoperă experiențele și cazăriile unei hosts locale din Moldova pe Hodina.',
     image: payload?.guesthouse.cover_image,
     canonicalPath: `/guesthouses/${payload?.guesthouse.slug ?? guesthouseIdentifier}`,
     jsonLd: payload
@@ -107,7 +107,7 @@ export const GuesthousePage = ({ guesthouseIdentifier, onNavigate }: GuesthouseP
       <div className="min-h-screen bg-white pb-20 md:pb-0">
         <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-[#efc4be] bg-[#fff4f1] px-6 py-6 text-[#944236]">
-            {error ?? 'Nu am găsit această pensiune.'}
+            {error ?? 'Nu am găsit această host.'}
           </div>
         </div>
       </div>
@@ -132,7 +132,7 @@ export const GuesthousePage = ({ guesthouseIdentifier, onNavigate }: GuesthouseP
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-6 md:p-8">
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/70">Pensiune parteneră</p>
+              <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/70">Host parteneră</p>
               <h1 className="mt-2 text-3xl font-bold text-white md:text-5xl">{guesthouse.name}</h1>
               <div className="mt-4 flex flex-wrap items-center gap-4 text-white/90">
                 <span className="inline-flex items-center gap-2">
@@ -159,9 +159,9 @@ export const GuesthousePage = ({ guesthouseIdentifier, onNavigate }: GuesthouseP
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_360px]">
           <div className="space-y-6">
             <section className="rounded-[2rem] border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="text-2xl font-semibold text-gray-900">Despre pensiune</h2>
+              <h2 className="text-2xl font-semibold text-gray-900">Despre host</h2>
               <p className="mt-4 leading-7 text-gray-600">
-                {guesthouse.description || 'Această pensiune își pregătește acum descrierea publică.'}
+                {guesthouse.description || 'Această host își pregătește acum descrierea publică.'}
               </p>
             </section>
 
@@ -194,7 +194,7 @@ export const GuesthousePage = ({ guesthouseIdentifier, onNavigate }: GuesthouseP
 
               {highlightedListings.length === 0 ? (
                 <div className="mt-5 rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center text-gray-500">
-                  Această pensiune va publica în curând experiențe și cazări.
+                  Această host va publica în curând experiențe și cazări.
                 </div>
               ) : (
                 <div className="mt-5 grid gap-5 md:grid-cols-2">

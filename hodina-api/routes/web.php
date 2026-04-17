@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -48,6 +49,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
         Route::get('categories/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
         Route::patch('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+
+        Route::get('attributes', [AttributeController::class, 'index'])->name('attributes.index');
+        Route::get('attributes/create', [AttributeController::class, 'create'])->name('attributes.create');
+        Route::post('attributes', [AttributeController::class, 'store'])->name('attributes.store');
+        Route::get('attributes/{attribute}/edit', [AttributeController::class, 'edit'])->name('attributes.edit');
+        Route::patch('attributes/{attribute}', [AttributeController::class, 'update'])->name('attributes.update');
+        Route::delete('attributes/{attribute}', [AttributeController::class, 'destroy'])->name('attributes.destroy');
 
         Route::get('bookings', [BookingController::class, 'index'])->name('bookings.index');
     });

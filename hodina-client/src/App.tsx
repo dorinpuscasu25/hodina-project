@@ -3,9 +3,11 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, usePa
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal } from './components/AuthModal';
+import { CookieBanner } from './components/CookieBanner';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { HomePage } from './pages/HomePage';
+import { LegalPage } from './pages/LegalPage';
 import { ListingPage } from './pages/ListingPage';
 import { ExperiencePage } from './pages/ExperiencePage';
 import { BookingPage } from './pages/BookingPage';
@@ -222,6 +224,8 @@ function AppShell() {
           />
           <Route path="/account/profile" element={<ProfilePage onNavigate={handleNavigate} onNotice={setNotice} />} />
           <Route path="/become-host" element={<BecomeHostPage onNavigate={handleNavigate} />} />
+          <Route path="/terms" element={<LegalPage kind="terms" onNavigate={handleNavigate} />} />
+          <Route path="/privacy" element={<LegalPage kind="privacy" onNavigate={handleNavigate} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -238,6 +242,8 @@ function AppShell() {
         onModeChange={setAuthMode}
         onSuccess={handleAuthSuccess}
       />
+
+      <CookieBanner onNavigate={handleNavigate} />
     </div>
   );
 }

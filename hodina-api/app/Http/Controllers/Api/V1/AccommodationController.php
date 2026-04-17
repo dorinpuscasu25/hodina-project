@@ -128,9 +128,12 @@ class AccommodationController extends Controller
         $accommodation->slug = $this->buildUniqueSlug(Accommodation::class, $validated['title']);
         $accommodation->save();
         $this->syncAmenities($accommodation, $validated);
+        if (array_key_exists('attributes', $validated)) {
+            $accommodation->syncAttributeValues($validated['attributes'] ?? []);
+        }
 
         return response()->json([
-            'data' => $accommodation->fresh(['guesthouse', 'type', 'amenities'])->toDetailArray($guesthouse->locale),
+            'data' => $accommodation->fresh(['guesthouse', 'type', 'amenities', 'attributeValues.attribute'])->toDetailArray($guesthouse->locale),
         ], 201);
     }
 
@@ -156,9 +159,12 @@ class AccommodationController extends Controller
 
         $accommodation->save();
         $this->syncAmenities($accommodation, $validated);
+        if (array_key_exists('attributes', $validated)) {
+            $accommodation->syncAttributeValues($validated['attributes'] ?? []);
+        }
 
         return response()->json([
-            'data' => $accommodation->fresh(['guesthouse', 'type', 'amenities'])->toDetailArray($guesthouse->locale),
+            'data' => $accommodation->fresh(['guesthouse', 'type', 'amenities', 'attributeValues.attribute'])->toDetailArray($guesthouse->locale),
         ]);
     }
 
@@ -218,6 +224,9 @@ class AccommodationController extends Controller
             'cancellation_policy' => ['nullable', 'string'],
             'amenity_ids' => ['nullable', 'array'],
             'amenity_ids.*' => ['integer', 'exists:categories,id'],
+            'attributes' => ['nullable', 'array'],
+            'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
+            'attributes.*.value' => ['nullable'],
         ]);
     }
 
@@ -225,7 +234,7 @@ class AccommodationController extends Controller
     {
         $translatableFields = ['title', 'short_description', 'description', 'highlights', 'house_rules', 'cancellation_policy'];
 
-        $accommodation->fill(Arr::except($validated, array_merge($translatableFields, ['amenity_ids'])));
+        $accommodation->fill(Arr::except($validated, array_merge($translatableFields, ['amenity_ids', 'attributes'])));
 
         foreach ($translatableFields as $field) {
             if (array_key_exists($field, $validated)) {

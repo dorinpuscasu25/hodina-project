@@ -80,11 +80,11 @@ export default function AdminDashboard({
                             </Badge>
                             <div className="space-y-2">
                                 <h1 className="text-3xl font-semibold tracking-tight">
-                                    Admin custom pentru pensiuni, conturi si
+                                    Admin custom pentru hosts, conturi si
                                     datele sistemului
                                 </h1>
                                 <p className="max-w-3xl text-sm text-slate-200">
-                                    Aici controlezi retelele de pensiuni,
+                                    Aici controlezi retelele de hosts,
                                     utilizatorii, taxonomiile si rezervarile din
                                     backend, fara Nova si fara dependenta de un
                                     panou extern.
@@ -95,7 +95,7 @@ export default function AdminDashboard({
                         <div className="flex flex-wrap gap-3">
                             <Button asChild variant="secondary">
                                 <Link href="/admin/guesthouses">
-                                    Pensiuni
+                                    Hosts
                                 </Link>
                             </Button>
                             <Button
@@ -174,7 +174,7 @@ export default function AdminDashboard({
                                                         booking.bookable_type}{' '}
                                                     la{' '}
                                                     {booking.guesthouse_name ??
-                                                        'Pensiune necunoscuta'}
+                                                        'Host necunoscuta'}
                                                 </p>
                                             </div>
 

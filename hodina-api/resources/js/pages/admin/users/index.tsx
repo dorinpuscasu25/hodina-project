@@ -152,7 +152,7 @@ export default function UsersIndex({
                                             Rol
                                         </th>
                                         <th className="px-4 py-3 font-medium">
-                                            Pensiune
+                                            Host
                                         </th>
                                         <th className="px-4 py-3 font-medium">
                                             Limba

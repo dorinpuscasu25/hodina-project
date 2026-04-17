@@ -431,7 +431,7 @@ export default function OrganizationSettings() {
     {
       id: 'company' as const,
       title: 'Date companie',
-      description: 'Profilul pensiunii și informațiile publice',
+      description: 'Profilul hostsi și informațiile publice',
       icon: <Building2 className="h-5 w-5" />,
     },
     {
@@ -466,7 +466,7 @@ export default function OrganizationSettings() {
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#7e8c83]">Settings</p>
         <h1 className="text-4xl font-semibold tracking-tight text-[#17332d]">Setări</h1>
         <p className="max-w-2xl text-base text-[#64766d]">
-          Aici gestionezi pensiunea, contul și securitatea într-un singur loc.
+          Aici gestionezi hosta, contul și securitatea într-un singur loc.
         </p>
       </div>
 
@@ -517,7 +517,7 @@ export default function OrganizationSettings() {
                   <h2 className="text-2xl font-semibold text-[#17332d]">Date companie</h2>
                   <div className="mt-5 grid gap-5 md:grid-cols-2">
                     <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm font-medium text-[#17332d]">Nume pensiune</label>
+                      <label className="mb-2 block text-sm font-medium text-[#17332d]">Nume host</label>
                       <input
                         value={companyForm.name}
                         onChange={(event) => setCompanyForm((current) => ({ ...current, name: event.target.value }))}
@@ -650,7 +650,7 @@ export default function OrganizationSettings() {
                 <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold text-[#17332d]">Membrii echipei</h2>
-                    <p className="text-sm text-[#6a7a71]">Mai mulți oameni pot lucra în aceeași pensiune, fiecare cu rol diferit.</p>
+                    <p className="text-sm text-[#6a7a71]">Mai mulți oameni pot lucra în aceeași host, fiecare cu rol diferit.</p>
                   </div>
 
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -1084,7 +1084,7 @@ export default function OrganizationSettings() {
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
               <div>
                 <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#7b8b83]">Adaugă utilizator</p>
-                <h2 className="mt-2 text-2xl font-semibold text-[#17332d]">Acces nou în pensiune</h2>
+                <h2 className="mt-2 text-2xl font-semibold text-[#17332d]">Acces nou în host</h2>
               </div>
               <button onClick={() => setShowMemberModal(false)} className="rounded-full p-2 transition hover:bg-gray-50">
                 <X className="h-5 w-5 text-[#6e7f75]" />

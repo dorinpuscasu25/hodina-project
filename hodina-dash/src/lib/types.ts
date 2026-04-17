@@ -56,11 +56,60 @@ export interface AuthResponse {
   requires_email_verification: boolean;
 }
 
+export interface AttributeOptionDef {
+  id: number;
+  value: string;
+  label: string;
+  color?: string | null;
+  icon?: string | null;
+  sort_order?: number;
+}
+
+export interface AttributeDef {
+  id: number;
+  key: string;
+  input_type:
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'multiselect'
+    | 'radio'
+    | 'range'
+    | 'date';
+  entity_type: 'experience' | 'accommodation' | 'both';
+  label: string;
+  description?: string | null;
+  unit?: string | null;
+  icon?: string | null;
+  config?: {
+    min?: number;
+    max?: number;
+    step?: number;
+    [key: string]: unknown;
+  };
+  is_filterable: boolean;
+  is_required: boolean;
+  sort_order: number;
+  options: AttributeOptionDef[];
+  category_ids: number[];
+}
+
+export interface AttributeValuePayload {
+  attribute_id: number;
+  key?: string;
+  label?: string;
+  input_type?: string;
+  value: unknown;
+}
+
 export interface BootstrapData {
   locales: Record<string, string>;
   experience_categories: Category[];
   accommodation_types: Category[];
   amenities: Category[];
+  attributes?: AttributeDef[];
+  filter_attributes?: AttributeDef[];
 }
 
 export interface ExperienceListing {
@@ -76,7 +125,8 @@ export interface ExperienceListing {
   duration_minutes: number | null;
   max_guests: number | null;
   min_age?: number | null;
-  difficulty?: string | null;
+  availability_start?: string | null;
+  availability_end?: string | null;
   city: string | null;
   country: string | null;
   address?: string | null;
@@ -84,6 +134,8 @@ export interface ExperienceListing {
   meeting_point?: string | null;
   cover_image: string | null;
   category: Category | null;
+  categories?: Category[];
+  attributes?: AttributeValuePayload[];
   guesthouse: Guesthouse | null;
   rating_average?: number | null;
   reviews_count?: number;

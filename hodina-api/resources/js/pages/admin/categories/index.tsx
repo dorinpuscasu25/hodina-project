@@ -23,7 +23,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface CategoryRow {
     id: number;
     type: string;
-    code: string | null;
+    parent_id: number | null;
     parent_name: string | null;
     image: string | null;
     sort_order: number;
@@ -247,12 +247,16 @@ export default function CategoriesIndex({
                                                         <Link
                                                             href={`/admin/categories/${category.id}/edit`}
                                                             className="font-medium transition hover:text-primary"
+                                                            style={{ paddingLeft: category.parent_id ? 20 : 0 }}
                                                         >
+                                                            {category.parent_id ? '↳ ' : ''}
                                                             {category.name}
                                                         </Link>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {category.code || '-'}
-                                                        </p>
+                                                        {category.parent_id ? (
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Subcategorie: {category.parent_name}
+                                                            </p>
+                                                        ) : null}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-4">

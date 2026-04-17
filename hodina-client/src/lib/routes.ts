@@ -9,7 +9,9 @@ export type ClientPage =
   | 'profile'
   | 'become-host'
   | 'messages'
-  | 'guesthouse';
+  | 'guesthouse'
+  | 'terms'
+  | 'privacy';
 
 export interface NavigationData {
   id?: number | string;
@@ -19,6 +21,9 @@ export interface NavigationData {
   categoryId?: number;
   typeId?: number;
   bookingId?: number;
+  date_from?: string;
+  date_to?: string;
+  guests?: string;
 }
 
 function resolveIdentifier(data?: NavigationData) {
@@ -48,7 +53,23 @@ export function buildClientPath(page: ClientPage, data: NavigationData = {}) {
         params.set('kind', data.kind);
       }
 
+      if (data.date_from) {
+        params.set('date_from', data.date_from);
+      }
+
+      if (data.date_to) {
+        params.set('date_to', data.date_to);
+      }
+
+      if (data.guests) {
+        params.set('guests', data.guests);
+      }
+
       return `/explore${params.toString() ? `?${params.toString()}` : ''}`;
+    case 'terms':
+      return '/terms';
+    case 'privacy':
+      return '/privacy';
     case 'experience':
       return data.kind === 'accommodation'
         ? `/stays/${resolveIdentifier(data)}`
@@ -79,6 +100,14 @@ export function buildClientPath(page: ClientPage, data: NavigationData = {}) {
 export function resolveCurrentPage(pathname: string): ClientPage {
   if (pathname === '/') {
     return 'home';
+  }
+
+  if (pathname.startsWith('/terms')) {
+    return 'terms';
+  }
+
+  if (pathname.startsWith('/privacy')) {
+    return 'privacy';
   }
 
   if (pathname.startsWith('/account/messages')) {

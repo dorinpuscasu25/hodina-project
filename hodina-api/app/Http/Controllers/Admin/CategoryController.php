@@ -40,11 +40,12 @@ class CategoryController extends Controller
                 $query->where(function ($nestedQuery) use ($like) {
                     $nestedQuery
                         ->whereRaw('LOWER(CAST(name AS TEXT)) LIKE ?', [$like])
-                        ->orWhereRaw('LOWER(CAST(slug AS TEXT)) LIKE ?', [$like])
-                        ->orWhereRaw('LOWER(COALESCE(code, \'\')) LIKE ?', [$like]);
+                        ->orWhereRaw('LOWER(CAST(slug AS TEXT)) LIKE ?', [$like]);
                 });
             })
             ->orderBy('type')
+            ->orderByRaw('COALESCE(parent_id, id) asc')
+            ->orderBy('parent_id')
             ->orderBy('sort_order')
             ->orderBy('id')
             ->paginate($perPage)
@@ -103,7 +104,6 @@ class CategoryController extends Controller
                 Category::TYPE_ACCOMMODATION_TYPE,
                 Category::TYPE_AMENITY,
             ])],
-            'code' => ['nullable', 'string', 'max:100'],
             'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
             'image_file' => ['nullable', 'image', 'max:5120'],
             'remove_image' => ['nullable', 'boolean'],
@@ -116,11 +116,20 @@ class CategoryController extends Controller
         ];
 
         foreach ($this->supportedLocales() as $locale) {
-            $rules["name.{$locale}"] = ['required', 'string', 'max:255'];
+            $rules["name.{$locale}"] = ['nullable', 'string', 'max:255'];
             $rules["description.{$locale}"] = ['nullable', 'string'];
         }
 
         $validated = $request->validate($rules);
+
+        $hasAtLeastOneName = collect($validated['name'] ?? [])
+            ->contains(fn ($value) => filled(trim((string) $value)));
+
+        if (! $hasAtLeastOneName) {
+            return back()
+                ->withErrors(['name' => 'Introdu numele cel puțin într-o limbă.'])
+                ->withInput();
+        }
 
         $parentId = $validated['parent_id'] ?? null;
 
@@ -145,9 +154,8 @@ class CategoryController extends Controller
 
         $category->fill([
             'type' => $validated['type'],
-            'code' => $validated['code'] ?? null,
             'parent_id' => $parentId,
-            'name' => $this->normalizeTranslations($validated['name']),
+            'name' => $this->normalizeTranslations($validated['name'], true),
             'description' => $this->normalizeTranslations($validated['description'] ?? []),
             'is_active' => $validated['is_active'],
             'sort_order' => $validated['sort_order'] ?? 0,
@@ -167,7 +175,7 @@ class CategoryController extends Controller
         return [
             'id' => $category->id,
             'type' => $category->type,
-            'code' => $category->code,
+            'parent_id' => $category->parent_id,
             'parent_name' => $category->parent?->translated('name', 'ro') ?: $category->parent?->translated('name', 'en'),
             'image' => MediaUploader::url($category->image),
             'sort_order' => $category->sort_order,
@@ -187,7 +195,6 @@ class CategoryController extends Controller
             return [
                 'id' => $category->id,
                 'type' => $category->type,
-                'code' => $category->code ?? '',
                 'parent_id' => $category->parent_id,
                 'name' => $this->translationsFor($category, 'name'),
                 'description' => $this->translationsFor($category, 'description'),
@@ -202,7 +209,6 @@ class CategoryController extends Controller
         return [
             'id' => null,
             'type' => Category::TYPE_EXPERIENCE_CATEGORY,
-            'code' => '',
             'parent_id' => null,
             'name' => $this->emptyTranslations(),
             'description' => $this->emptyTranslations(),

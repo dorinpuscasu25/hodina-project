@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasApiTranslations;
+use App\Models\Concerns\HasAttributeValues;
 use App\Support\MediaUploader;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,7 @@ use Spatie\Translatable\HasTranslations;
 
 class Accommodation extends Model
 {
-    use HasApiTranslations, HasTranslations;
+    use HasApiTranslations, HasAttributeValues, HasTranslations;
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_PUBLISHED = 'published';

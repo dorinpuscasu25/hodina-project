@@ -17,7 +17,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Admin', href: '/admin' },
-    { title: 'Pensiuni', href: '/admin/guesthouses' },
+    { title: 'Hosts', href: '/admin/guesthouses' },
 ];
 
 interface GuesthouseRow {
@@ -90,7 +90,7 @@ export default function GuesthousesIndex({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Pensiuni" />
+            <Head title="Hosts" />
 
             <div className="flex flex-1 flex-col gap-6 p-4">
                 <Card className="gap-0 overflow-hidden">
@@ -98,7 +98,7 @@ export default function GuesthousesIndex({
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div className="space-y-2">
                                 <CardTitle className="text-3xl">
-                                    Pensiuni
+                                    Hosts
                                 </CardTitle>
                                 <CardDescription>
                                     Tabel cu cautare si paginare pentru toate
@@ -109,7 +109,7 @@ export default function GuesthousesIndex({
                             <Button asChild>
                                 <Link href="/admin/guesthouses/create">
                                     <Plus className="size-4" />
-                                    Adauga pensiune
+                                    Adauga host
                                 </Link>
                             </Button>
                         </div>

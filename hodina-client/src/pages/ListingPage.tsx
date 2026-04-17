@@ -4,17 +4,70 @@ import { Grid3x3, Home, Map as MapIcon, Search, SlidersHorizontal, Star, X } fro
 import { useLanguage } from '../i18n/LanguageContext';
 import { apiRequest, formatApiError } from '../lib/api';
 import { useSeo } from '../lib/seo';
+import { COUNTRIES, findCities } from '../lib/locations';
 import {
   formatCurrency,
   formatDuration,
   getListingLocation,
   getListingPrice,
 } from '../lib/utils';
-import type { AccommodationListing, BootstrapData, ExperienceListing, PublicListing } from '../types';
+import type {
+  AccommodationListing,
+  AttributeDef,
+  BootstrapData,
+  ExperienceListing,
+  PublicListing,
+} from '../types';
 
 interface ListingPageProps {
   onNavigate: (page: string, data?: Record<string, unknown>) => void;
 }
+
+type AttributeFilterValue = string | number | boolean | string[] | { min?: number; max?: number };
+
+const parseAttributeParam = (raw: string, attr: AttributeDef): AttributeFilterValue | null => {
+  switch (attr.input_type) {
+    case 'boolean':
+      return raw === '1' || raw === 'true';
+    case 'number':
+      return Number(raw);
+    case 'range': {
+      const parts = raw.split(',');
+      const min = parts[0] ? Number(parts[0]) : undefined;
+      const max = parts[1] ? Number(parts[1]) : undefined;
+      return { min, max };
+    }
+    case 'multiselect':
+      return raw.split(',').filter(Boolean);
+    default:
+      return raw;
+  }
+};
+
+const serializeAttributeValue = (
+  attr: AttributeDef,
+  value: AttributeFilterValue,
+): string | null => {
+  if (value === null || value === undefined) return null;
+
+  switch (attr.input_type) {
+    case 'boolean':
+      return value ? '1' : null;
+    case 'range': {
+      const { min, max } = value as { min?: number; max?: number };
+      if (min === undefined && max === undefined) return null;
+      return `${min ?? ''},${max ?? ''}`;
+    }
+    case 'multiselect': {
+      const arr = value as string[];
+      return arr.length > 0 ? arr.join(',') : null;
+    }
+    case 'number':
+      return String(value);
+    default:
+      return String(value).trim() ? String(value).trim() : null;
+  }
+};
 
 export const ListingPage = ({ onNavigate }: ListingPageProps) => {
   const { t, language } = useLanguage();
@@ -33,7 +86,10 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
   const [selectedAccommodationTypeId, setSelectedAccommodationTypeId] = useState<number | null>(
     searchParams.get('type') ? Number(searchParams.get('type')) : null,
   );
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    Number(searchParams.get('min_price') ?? 0),
+    Number(searchParams.get('max_price') ?? 5000),
+  ]);
   const [sortBy, setSortBy] = useState<'recommended' | 'price-low' | 'price-high'>(
     searchParams.get('sort') === 'price-low' || searchParams.get('sort') === 'price-high'
       ? (searchParams.get('sort') as 'price-low' | 'price-high')
@@ -44,6 +100,32 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
   const [accommodations, setAccommodations] = useState<AccommodationListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState(searchParams.get('date_from') ?? '');
+  const [dateTo, setDateTo] = useState(searchParams.get('date_to') ?? '');
+  const [guests, setGuests] = useState(searchParams.get('guests') ?? '');
+  const [selectedCountry, setSelectedCountry] = useState(searchParams.get('country') ?? '');
+  const [selectedCity, setSelectedCity] = useState(searchParams.get('city') ?? '');
+  const [attributeFilters, setAttributeFilters] = useState<Record<number, AttributeFilterValue>>({});
+
+  const filterAttributes = bootstrap?.filter_attributes ?? [];
+
+  useEffect(() => {
+    if (filterAttributes.length === 0) {
+      return;
+    }
+
+    const next: Record<number, AttributeFilterValue> = {};
+    filterAttributes.forEach((attr) => {
+      const raw = searchParams.get(`attr_${attr.id}`);
+      if (raw !== null) {
+        const parsed = parseAttributeParam(raw, attr);
+        if (parsed !== null) {
+          next[attr.id] = parsed;
+        }
+      }
+    });
+    setAttributeFilters(next);
+  }, [filterAttributes, searchParams]);
 
   useEffect(() => {
     const query = searchParams.get('q') ?? '';
@@ -63,42 +145,89 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
   useEffect(() => {
     const nextParams = new URLSearchParams();
 
-    if (searchQuery.trim()) {
-      nextParams.set('q', searchQuery.trim());
-    }
+    if (searchQuery.trim()) nextParams.set('q', searchQuery.trim());
+    if (listingType !== 'all') nextParams.set('kind', listingType);
+    if (selectedExperienceCategoryId) nextParams.set('category', String(selectedExperienceCategoryId));
+    if (selectedAccommodationTypeId) nextParams.set('type', String(selectedAccommodationTypeId));
+    if (sortBy !== 'recommended') nextParams.set('sort', sortBy);
+    if (showMap) nextParams.set('view', 'map');
+    if (dateFrom) nextParams.set('date_from', dateFrom);
+    if (dateTo) nextParams.set('date_to', dateTo);
+    if (guests) nextParams.set('guests', guests);
+    if (selectedCountry) nextParams.set('country', selectedCountry);
+    if (selectedCity) nextParams.set('city', selectedCity);
+    if (priceRange[0] > 0) nextParams.set('min_price', String(priceRange[0]));
+    if (priceRange[1] < 5000) nextParams.set('max_price', String(priceRange[1]));
 
-    if (listingType !== 'all') {
-      nextParams.set('kind', listingType);
-    }
-
-    if (selectedExperienceCategoryId) {
-      nextParams.set('category', String(selectedExperienceCategoryId));
-    }
-
-    if (selectedAccommodationTypeId) {
-      nextParams.set('type', String(selectedAccommodationTypeId));
-    }
-
-    if (sortBy !== 'recommended') {
-      nextParams.set('sort', sortBy);
-    }
-
-    if (showMap) {
-      nextParams.set('view', 'map');
-    }
+    filterAttributes.forEach((attr) => {
+      const value = attributeFilters[attr.id];
+      if (value === undefined) return;
+      const serialized = serializeAttributeValue(attr, value);
+      if (serialized) nextParams.set(`attr_${attr.id}`, serialized);
+    });
 
     if (nextParams.toString() !== searchParams.toString()) {
       setSearchParams(nextParams, { replace: true });
     }
   }, [
+    attributeFilters,
+    dateFrom,
+    dateTo,
+    filterAttributes,
+    guests,
     listingType,
+    priceRange,
     searchParams,
     searchQuery,
     selectedAccommodationTypeId,
+    selectedCity,
+    selectedCountry,
     selectedExperienceCategoryId,
     setSearchParams,
     showMap,
     sortBy,
+  ]);
+
+  const buildQueryString = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('locale', language);
+    params.set('per_page', '50');
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo) params.set('date_to', dateTo);
+    if (guests) params.set('guests', guests);
+    if (selectedCountry) params.set('country', selectedCountry);
+    if (selectedCity) params.set('city', selectedCity);
+    if (priceRange[0] > 0) params.set('min_price', String(priceRange[0]));
+    if (priceRange[1] < 5000) params.set('max_price', String(priceRange[1]));
+
+    filterAttributes.forEach((attr) => {
+      const value = attributeFilters[attr.id];
+      if (value === undefined) return;
+      const serialized = serializeAttributeValue(attr, value);
+      if (!serialized) return;
+
+      if (attr.input_type === 'multiselect') {
+        (value as string[]).forEach((v) => params.append(`attributes[${attr.id}][]`, v));
+      } else if (attr.input_type === 'range') {
+        const { min, max } = value as { min?: number; max?: number };
+        if (min !== undefined) params.set(`attributes[${attr.id}][min]`, String(min));
+        if (max !== undefined) params.set(`attributes[${attr.id}][max]`, String(max));
+      } else {
+        params.set(`attributes[${attr.id}]`, serialized);
+      }
+    });
+
+    return params.toString();
+  }, [
+    attributeFilters,
+    dateFrom,
+    dateTo,
+    filterAttributes,
+    guests,
+    language,
+    priceRange,
+    selectedCity,
+    selectedCountry,
   ]);
 
   useEffect(() => {
@@ -109,11 +238,11 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
       setError(null);
 
       try {
-        const locale = encodeURIComponent(language);
+        const qs = buildQueryString;
         const [bootstrapResponse, experienceResponse, accommodationResponse] = await Promise.all([
-          apiRequest<{ data: BootstrapData }>(`/public/bootstrap?locale=${locale}`),
-          apiRequest<{ data: ExperienceListing[] }>(`/public/experiences?locale=${locale}&per_page=50`),
-          apiRequest<{ data: AccommodationListing[] }>(`/public/accommodations?locale=${locale}&per_page=50`),
+          apiRequest<{ data: BootstrapData }>(`/public/bootstrap?locale=${encodeURIComponent(language)}`),
+          apiRequest<{ data: ExperienceListing[] }>(`/public/experiences?${qs}`),
+          apiRequest<{ data: AccommodationListing[] }>(`/public/accommodations?${qs}`),
         ]);
 
         if (ignore) {
@@ -139,7 +268,7 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
     return () => {
       ignore = true;
     };
-  }, [language]);
+  }, [buildQueryString, language]);
 
   const listings = useMemo(() => {
     const items: PublicListing[] = [];
@@ -236,14 +365,14 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
   const seoDescription =
     searchQuery.trim()
       ? `Rezultate pentru ${searchQuery.trim()} pe Hodina: experiențe și cazări locale din Moldova.`
-      : 'Explorează experiențe autentice, pensiuni și cazări locale din Moldova pe Hodina.';
+      : 'Explorează experiențe autentice, hosts și cazări locale din Moldova pe Hodina.';
 
   useSeo({
     title:
       listingType === 'experience'
         ? 'Experiențe în Moldova'
         : listingType === 'accommodation'
-          ? 'Cazări și pensiuni în Moldova'
+          ? 'Cazări și hosts în Moldova'
           : 'Explorează Moldova',
     description: seoDescription,
     canonicalPath: `/explore${searchParams.toString() ? `?${searchParams.toString()}` : ''}`,
@@ -262,6 +391,200 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
       : language === 'ru'
         ? 'По текущим фильтрам ничего не найдено.'
         : 'No results match your current filters.';
+
+  const cityOptions = selectedCountry ? findCities(selectedCountry) : [];
+
+  const setAttributeValue = (attr: AttributeDef, value: AttributeFilterValue | undefined) => {
+    setAttributeFilters((current) => {
+      const next = { ...current };
+      if (value === undefined || value === null || value === '') {
+        delete next[attr.id];
+      } else {
+        next[attr.id] = value;
+      }
+      return next;
+    });
+  };
+
+  const renderAttributeFilter = (attr: AttributeDef) => {
+    const value = attributeFilters[attr.id];
+
+    if (attr.input_type === 'boolean') {
+      return (
+        <label key={attr.id} className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={value === true}
+            onChange={(e) => setAttributeValue(attr, e.target.checked ? true : undefined)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <span>{attr.label}</span>
+        </label>
+      );
+    }
+
+    if (attr.input_type === 'select' || attr.input_type === 'radio') {
+      return (
+        <div key={attr.id}>
+          <label className="mb-2 block text-sm font-medium text-gray-700">{attr.label}</label>
+          <select
+            value={typeof value === 'string' ? value : ''}
+            onChange={(e) => setAttributeValue(attr, e.target.value || undefined)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
+          >
+            <option value="">—</option>
+            {attr.options.map((opt) => (
+              <option key={opt.id} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    if (attr.input_type === 'multiselect') {
+      const arr = Array.isArray(value) ? (value as string[]) : [];
+      return (
+        <div key={attr.id}>
+          <label className="mb-2 block text-sm font-medium text-gray-700">{attr.label}</label>
+          <div className="flex flex-wrap gap-2">
+            {attr.options.map((opt) => {
+              const isSelected = arr.includes(opt.value);
+              return (
+                <button
+                  type="button"
+                  key={opt.id}
+                  onClick={() => {
+                    const nextArr = isSelected
+                      ? arr.filter((v) => v !== opt.value)
+                      : [...arr, opt.value];
+                    setAttributeValue(attr, nextArr.length > 0 ? nextArr : undefined);
+                  }}
+                  className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                    isSelected
+                      ? 'border-[#002626] bg-[#002626] text-white'
+                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (attr.input_type === 'number') {
+      return (
+        <div key={attr.id}>
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            {attr.label}
+            {attr.unit ? <span className="ml-1 text-gray-400">({attr.unit})</span> : null}
+          </label>
+          <input
+            type="number"
+            value={typeof value === 'number' ? value : ''}
+            min={attr.config?.min}
+            max={attr.config?.max}
+            step={attr.config?.step ?? 1}
+            onChange={(e) =>
+              setAttributeValue(attr, e.target.value === '' ? undefined : Number(e.target.value))
+            }
+            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
+          />
+        </div>
+      );
+    }
+
+    if (attr.input_type === 'range') {
+      const obj = (value ?? {}) as { min?: number; max?: number };
+      return (
+        <div key={attr.id}>
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            {attr.label}
+            {attr.unit ? <span className="ml-1 text-gray-400">({attr.unit})</span> : null}
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              placeholder="Min"
+              value={obj.min ?? ''}
+              min={attr.config?.min}
+              max={attr.config?.max}
+              onChange={(e) => {
+                const min = e.target.value === '' ? undefined : Number(e.target.value);
+                const next = { ...obj, min };
+                setAttributeValue(
+                  attr,
+                  next.min === undefined && next.max === undefined ? undefined : next,
+                );
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#002626] focus:outline-none"
+            />
+            <span className="text-gray-400">—</span>
+            <input
+              type="number"
+              placeholder="Max"
+              value={obj.max ?? ''}
+              min={attr.config?.min}
+              max={attr.config?.max}
+              onChange={(e) => {
+                const max = e.target.value === '' ? undefined : Number(e.target.value);
+                const next = { ...obj, max };
+                setAttributeValue(
+                  attr,
+                  next.min === undefined && next.max === undefined ? undefined : next,
+                );
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#002626] focus:outline-none"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (attr.input_type === 'date') {
+      return (
+        <div key={attr.id}>
+          <label className="mb-2 block text-sm font-medium text-gray-700">{attr.label}</label>
+          <input
+            type="date"
+            value={typeof value === 'string' ? value : ''}
+            onChange={(e) => setAttributeValue(attr, e.target.value || undefined)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div key={attr.id}>
+        <label className="mb-2 block text-sm font-medium text-gray-700">{attr.label}</label>
+        <input
+          type="text"
+          value={typeof value === 'string' ? value : ''}
+          onChange={(e) => setAttributeValue(attr, e.target.value || undefined)}
+          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
+        />
+      </div>
+    );
+  };
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setSelectedExperienceCategoryId(null);
+    setSelectedAccommodationTypeId(null);
+    setPriceRange([0, 5000]);
+    setListingType('all');
+    setDateFrom('');
+    setDateTo('');
+    setGuests('');
+    setSelectedCountry('');
+    setSelectedCity('');
+    setAttributeFilters({});
+  };
 
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
@@ -376,12 +699,101 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
               <div className="rounded-2xl bg-gray-50 p-6">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-lg font-semibold">{t.listing.filters}</h3>
-                  <button onClick={() => setShowFilters(false)}>
-                    <X className="h-5 w-5 text-gray-500" />
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="text-sm font-medium text-gray-600 underline hover:text-gray-900"
+                    >
+                      {language === 'ro' ? 'Resetează' : language === 'ru' ? 'Сбросить' : 'Reset'}
+                    </button>
+                    <button onClick={() => setShowFilters(false)}>
+                      <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      {language === 'ro' ? 'Data sosirii' : language === 'ru' ? 'Дата заезда' : 'Check-in'}
+                    </label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(event) => setDateFrom(event.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      {language === 'ro' ? 'Data plecării' : language === 'ru' ? 'Дата выезда' : 'Check-out'}
+                    </label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      min={dateFrom || undefined}
+                      onChange={(event) => setDateTo(event.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      {language === 'ro' ? 'Oaspeți' : language === 'ru' ? 'Гости' : 'Guests'}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={guests}
+                      onChange={(event) => setGuests(event.target.value)}
+                      placeholder="1"
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      {language === 'ro' ? 'Țara' : language === 'ru' ? 'Страна' : 'Country'}
+                    </label>
+                    <select
+                      value={selectedCountry}
+                      onChange={(event) => {
+                        setSelectedCountry(event.target.value);
+                        setSelectedCity('');
+                      }}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
+                    >
+                      <option value="">—</option>
+                      {COUNTRIES.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      {language === 'ro' ? 'Oraș' : language === 'ru' ? 'Город' : 'City'}
+                    </label>
+                    <select
+                      value={selectedCity}
+                      onChange={(event) => setSelectedCity(event.target.value)}
+                      disabled={!selectedCountry}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                      <option value="">—</option>
+                      {cityOptions.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-700">{t.listing.category}</label>
                     <select
@@ -410,39 +822,43 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
                     </select>
                   </div>
 
-                  <div>
+                  <div className="md:col-span-2 lg:col-span-3">
                     <label className="mb-2 block text-sm font-medium text-gray-700">{t.listing.priceRange}</label>
-                    <div className="space-y-2">
+                    <div className="flex items-center gap-3">
                       <input
-                        type="range"
+                        type="number"
                         min="0"
                         max="5000"
-                        step="50"
-                        value={priceRange[1]}
-                        onChange={(event) => setPriceRange([priceRange[0], Number(event.target.value)])}
-                        className="w-full"
+                        value={priceRange[0]}
+                        onChange={(event) =>
+                          setPriceRange([Number(event.target.value) || 0, priceRange[1]])
+                        }
+                        className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#002626] focus:outline-none"
                       />
-                      <div className="flex items-center justify-between text-sm text-gray-600">
-                        <span>{formatCurrency(priceRange[0])}</span>
-                        <span>{formatCurrency(priceRange[1])}</span>
+                      <span className="text-gray-400">—</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="5000"
+                        value={priceRange[1]}
+                        onChange={(event) =>
+                          setPriceRange([priceRange[0], Number(event.target.value) || 5000])
+                        }
+                        className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#002626] focus:outline-none"
+                      />
+                      <div className="flex-1 text-right text-sm text-gray-500">
+                        {formatCurrency(priceRange[0])} – {formatCurrency(priceRange[1])}
                       </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700">Tip</label>
-                    <select
-                      value={listingType}
-                      onChange={(event) =>
-                        setListingType(event.target.value as 'all' | 'experience' | 'accommodation')
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#002626] focus:outline-none"
-                    >
-                      <option value="all">All</option>
-                      <option value="experience">Experiences</option>
-                      <option value="accommodation">Homes</option>
-                    </select>
-                  </div>
+                  {filterAttributes
+                    .filter((attr) => {
+                      if (listingType === 'experience') return attr.entity_type !== 'accommodation';
+                      if (listingType === 'accommodation') return attr.entity_type !== 'experience';
+                      return true;
+                    })
+                    .map(renderAttributeFilter)}
                 </div>
               </div>
             ) : null}
@@ -512,16 +928,10 @@ export const ListingPage = ({ onNavigate }: ListingPageProps) => {
             <div className="rounded-3xl border border-gray-200 bg-white px-6 py-12 text-center">
               <p className="text-lg font-semibold text-gray-900">{noResultsText}</p>
               <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedExperienceCategoryId(null);
-                  setSelectedAccommodationTypeId(null);
-                  setPriceRange([0, 5000]);
-                  setListingType('all');
-                }}
+                onClick={resetFilters}
                 className="mt-4 rounded-full bg-[#002626] px-6 py-3 font-semibold text-white"
               >
-                Resetează filtrele
+                {language === 'ro' ? 'Resetează filtrele' : language === 'ru' ? 'Сбросить фильтры' : 'Reset filters'}
               </button>
             </div>
           ) : (

@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasApiTranslations;
+use App\Models\Concerns\HasAttributeValues;
 use App\Support\MediaUploader;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
@@ -13,7 +15,7 @@ use Spatie\Translatable\HasTranslations;
 
 class Experience extends Model
 {
-    use HasApiTranslations, HasTranslations;
+    use HasApiTranslations, HasAttributeValues, HasTranslations;
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_PUBLISHED = 'published';
@@ -37,8 +39,9 @@ class Experience extends Model
         'duration_minutes',
         'max_guests',
         'min_age',
-        'difficulty',
         'price_amount',
+        'availability_start',
+        'availability_end',
         'currency',
         'price_mode',
         'default_start_time',
@@ -59,6 +62,8 @@ class Experience extends Model
     {
         return [
             'available_days' => 'array',
+            'availability_start' => 'date',
+            'availability_end' => 'date',
             'gallery' => 'array',
             'is_instant_book' => 'boolean',
             'price_amount' => 'decimal:2',
@@ -87,6 +92,14 @@ class Experience extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'category_experience')
+            ->withPivot('sort_order')
+            ->withTimestamps()
+            ->orderBy('category_experience.sort_order');
     }
 
     public function recurrences(): HasMany
@@ -153,12 +166,17 @@ class Experience extends Model
             'address' => $this->address,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'difficulty' => $this->difficulty,
             'min_age' => $this->min_age,
             'price_mode' => $this->price_mode,
             'default_start_time' => $this->default_start_time,
             'default_end_time' => $this->default_end_time,
             'available_days' => $this->available_days ?? [],
+            'availability_start' => $this->availability_start?->toDateString(),
+            'availability_end' => $this->availability_end?->toDateString(),
+            'categories' => $this->relationLoaded('categories')
+                ? $this->categories->map(fn (Category $category) => $category->toApiArray($locale))->values()
+                : [],
+            'attributes' => $this->attributeValuesArray($locale),
             'gallery' => collect($this->gallery ?? [])->map(fn (?string $path) => MediaUploader::url($path) ?? $path)->values()->all(),
             'video_url' => $this->video_url,
             'included_items' => $this->translated('included_items', $locale) ?? [],

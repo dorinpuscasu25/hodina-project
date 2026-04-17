@@ -89,7 +89,7 @@ export default function GuesthouseFormPage({
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Admin', href: '/admin' },
-        { title: 'Pensiuni', href: '/admin/guesthouses' },
+        { title: 'Hosts', href: '/admin/guesthouses' },
         {
             title: isEdit ? 'Editeaza' : 'Adauga',
             href: isEdit
@@ -159,13 +159,13 @@ export default function GuesthouseFormPage({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={isEdit ? 'Editeaza pensiune' : 'Adauga pensiune'} />
+            <Head title={isEdit ? 'Editeaza host' : 'Adauga host'} />
 
             <div className="flex flex-1 flex-col gap-6 p-4">
                 <section className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="space-y-1">
                         <h1 className="text-3xl font-semibold tracking-tight">
-                            {isEdit ? 'Editeaza pensiune' : 'Adauga pensiune'}
+                            {isEdit ? 'Editeaza host' : 'Adauga host'}
                         </h1>
                         <p className="text-sm text-muted-foreground">
                             Formular separat pentru configurarea completa a
@@ -183,7 +183,7 @@ export default function GuesthouseFormPage({
                         <CardTitle>Date generale</CardTitle>
                         <CardDescription>
                             Traducerile raman pe taburi, iar limba profilului
-                            controleaza ce vede pensiunea in dashboardul ei.
+                            controleaza ce vede hosta in dashboardul ei.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -502,7 +502,7 @@ export default function GuesthouseFormPage({
                                 <Button disabled={form.processing}>
                                     {isEdit
                                         ? 'Salveaza modificarile'
-                                        : 'Creeaza pensiunea'}
+                                        : 'Creeaza hosta'}
                                 </Button>
                                 <Button asChild type="button" variant="outline">
                                     <Link href="/admin/guesthouses">
@@ -518,7 +518,7 @@ export default function GuesthouseFormPage({
                     <>
                         <Card className="gap-0 overflow-hidden">
                             <CardHeader>
-                                <CardTitle>Experiente ale pensiunii</CardTitle>
+                                <CardTitle>Experiente ale hostsi</CardTitle>
                                 <CardDescription>
                                     Hostul le creeaza in draft, iar adminul le
                                     poate confirma aici prin publicare.
@@ -561,7 +561,7 @@ export default function GuesthouseFormPage({
                                                         colSpan={7}
                                                         className="px-4 py-10 text-center text-muted-foreground"
                                                     >
-                                                        Pensiunea nu are inca
+                                                        Hosta nu are inca
                                                         experiente.
                                                     </td>
                                                 </tr>
@@ -671,7 +671,7 @@ export default function GuesthouseFormPage({
 
                         <Card className="gap-0 overflow-hidden">
                             <CardHeader>
-                                <CardTitle>Cazari ale pensiunii</CardTitle>
+                                <CardTitle>Cazari ale hostsi</CardTitle>
                                 <CardDescription>
                                     Adminul poate confirma si cazarile create
                                     de host, tot din aceasta pagina.
@@ -714,7 +714,7 @@ export default function GuesthouseFormPage({
                                                         colSpan={7}
                                                         className="px-4 py-10 text-center text-muted-foreground"
                                                     >
-                                                        Pensiunea nu are inca
+                                                        Hosta nu are inca
                                                         cazari.
                                                     </td>
                                                 </tr>

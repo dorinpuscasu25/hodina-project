@@ -184,7 +184,7 @@ export default function Today() {
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#7e8c83]">Operations</p>
           <h1 className="text-4xl font-semibold tracking-tight text-[#17332d]">Today</h1>
           <p className="max-w-2xl text-base text-[#64766d]">
-            Vezi ce rezervări vin astăzi, ce ai de confirmat și câte listări sunt active în pensiune.
+            Vezi ce rezervări vin astăzi, ce ai de confirmat și câte listări sunt active în host.
           </p>
         </div>
       </div>

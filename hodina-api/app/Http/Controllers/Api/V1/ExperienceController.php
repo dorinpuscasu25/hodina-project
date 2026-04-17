@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attribute;
 use App\Models\Category;
 use App\Models\Experience;
 use App\Models\ExperienceSession;
@@ -25,6 +26,13 @@ class ExperienceController extends Controller
     {
         $locale = $this->resolveLocale($request);
 
+        $attributes = Attribute::query()
+            ->active()
+            ->with(['options', 'categories:id'])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
         return response()->json([
             'data' => [
                 'locales' => config('hodina.supported_locales'),
@@ -37,6 +45,21 @@ class ExperienceController extends Controller
                     ->get()
                     ->map(fn (Category $item) => $item->toApiArray($locale))
                     ->values(),
+                'attributes' => $attributes->map(function (Attribute $attribute) use ($locale) {
+                    return array_merge(
+                        $attribute->toApiArray($locale),
+                        ['category_ids' => $attribute->categories->pluck('id')->values()->all()],
+                    );
+                })->values(),
+                'filter_attributes' => $attributes
+                    ->filter(fn (Attribute $attribute) => $attribute->is_filterable)
+                    ->map(function (Attribute $attribute) use ($locale) {
+                        return array_merge(
+                            $attribute->toApiArray($locale),
+                            ['category_ids' => $attribute->categories->pluck('id')->values()->all()],
+                        );
+                    })
+                    ->values(),
             ],
         ]);
     }
@@ -47,7 +70,7 @@ class ExperienceController extends Controller
         $perPage = min(max((int) $request->integer('per_page', 12), 1), 50);
 
         $experiences = Experience::query()
-            ->with(['guesthouse', 'category.parent', 'amenities', 'reviews'])
+            ->with(['guesthouse', 'category.parent', 'categories', 'amenities', 'attributeValues.attribute', 'reviews'])
             ->published()
             ->when($request->filled('query'), function ($query) use ($request) {
                 $needle = '%'.Str::lower($request->string('query')->toString()).'%';
@@ -64,10 +87,33 @@ class ExperienceController extends Controller
             })
             ->when($request->filled('category_id'), function ($query) use ($request) {
                 $categoryIds = $this->categoryFilterIds($request->integer('category_id'));
-                $query->whereIn('category_id', $categoryIds);
+                $query->where(function ($nested) use ($categoryIds) {
+                    $nested->whereIn('category_id', $categoryIds)
+                        ->orWhereHas('categories', fn ($q) => $q->whereIn('categories.id', $categoryIds));
+                });
             })
             ->when($request->filled('guesthouse_id'), fn ($query) => $query->where('guesthouse_id', $request->integer('guesthouse_id')))
             ->when($request->filled('city'), fn ($query) => $query->where('city', $request->string('city')->toString()))
+            ->when($request->filled('country'), fn ($query) => $query->where('country', $request->string('country')->toString()))
+            ->when($request->filled('date_from'), fn ($query) => $query->where(function ($nested) use ($request) {
+                $nested->whereNull('availability_end')
+                    ->orWhere('availability_end', '>=', $request->date('date_from'));
+            }))
+            ->when($request->filled('date_to'), fn ($query) => $query->where(function ($nested) use ($request) {
+                $nested->whereNull('availability_start')
+                    ->orWhere('availability_start', '<=', $request->date('date_to'));
+            }))
+            ->when($request->filled('guests'), fn ($query) => $query->where(function ($nested) use ($request) {
+                $nested->whereNull('max_guests')
+                    ->orWhere('max_guests', '>=', $request->integer('guests'));
+            }))
+            ->when($request->filled('min_price'), fn ($query) => $query->where('price_amount', '>=', $request->input('min_price')))
+            ->when($request->filled('max_price'), fn ($query) => $query->where('price_amount', '<=', $request->input('max_price')))
+            ->when(is_array($request->input('attributes')), function ($query) use ($request) {
+                foreach ((array) $request->input('attributes') as $attributeId => $value) {
+                    $this->applyAttributeFilter($query, (int) $attributeId, $value);
+                }
+            })
             ->latest()
             ->paginate($perPage);
 
@@ -88,7 +134,7 @@ class ExperienceController extends Controller
         abort_unless($experience->status === Experience::STATUS_PUBLISHED, 404);
 
         $locale = $this->resolveLocale($request);
-        $experience->load(['guesthouse', 'category.parent', 'amenities', 'sessions', 'reviews.guest']);
+        $experience->load(['guesthouse', 'category.parent', 'categories', 'amenities', 'attributeValues.attribute', 'sessions', 'reviews.guest']);
 
         return response()->json([
             'data' => $experience->toDetailArray($locale),
@@ -120,7 +166,7 @@ class ExperienceController extends Controller
         $locale = $guesthouse->locale;
 
         $experiences = Experience::query()
-            ->with(['guesthouse', 'category.parent', 'amenities', 'reviews'])
+            ->with(['guesthouse', 'category.parent', 'categories', 'amenities', 'attributeValues.attribute', 'reviews'])
             ->where('guesthouse_id', $guesthouse->id)
             ->latest()
             ->get();
@@ -135,7 +181,7 @@ class ExperienceController extends Controller
         $guesthouse = $this->hostGuesthouse($request);
         abort_unless($experience->guesthouse_id === $guesthouse->id, 404);
 
-        $experience->load(['guesthouse', 'category.parent', 'amenities', 'recurrences', 'sessions', 'reviews.guest']);
+        $experience->load(['guesthouse', 'category.parent', 'categories', 'amenities', 'attributeValues.attribute', 'recurrences', 'sessions', 'reviews.guest']);
 
         return response()->json([
             'data' => $experience->toDetailArray($guesthouse->locale),
@@ -146,6 +192,7 @@ class ExperienceController extends Controller
     {
         $guesthouse = $this->hostGuesthouse($request);
         $validated = $this->validateExperience($request);
+        $validated = $this->resolvePrimaryCategory($validated);
         $this->assertExperienceCategoryId($validated['category_id'] ?? null);
         $validated = $this->prepareMediaPayload($request, $validated);
 
@@ -159,7 +206,7 @@ class ExperienceController extends Controller
         $this->syncExperienceRelations($experience, $validated);
 
         return response()->json([
-            'data' => $experience->fresh(['guesthouse', 'category', 'amenities', 'recurrences', 'sessions'])
+            'data' => $experience->fresh(['guesthouse', 'category', 'categories', 'amenities', 'attributeValues.attribute', 'recurrences', 'sessions'])
                 ->toDetailArray($guesthouse->locale),
         ], 201);
     }
@@ -170,6 +217,7 @@ class ExperienceController extends Controller
         abort_unless($experience->guesthouse_id === $guesthouse->id, 404);
 
         $validated = $this->validateExperience($request, true);
+        $validated = $this->resolvePrimaryCategory($validated);
         $this->assertExperienceCategoryId($validated['category_id'] ?? $experience->category_id);
         $validated = $this->prepareMediaPayload(
             $request,
@@ -188,7 +236,7 @@ class ExperienceController extends Controller
         $this->syncExperienceRelations($experience, $validated);
 
         return response()->json([
-            'data' => $experience->fresh(['guesthouse', 'category', 'amenities', 'recurrences', 'sessions'])
+            'data' => $experience->fresh(['guesthouse', 'category', 'categories', 'amenities', 'attributeValues.attribute', 'recurrences', 'sessions'])
                 ->toDetailArray($guesthouse->locale),
         ]);
     }
@@ -239,7 +287,10 @@ class ExperienceController extends Controller
             'important_notes',
         ];
 
-        $experience->fill(Arr::except($validated, array_merge($translatableFields, ['amenity_ids'])));
+        $experience->fill(Arr::except($validated, array_merge(
+            $translatableFields,
+            ['amenity_ids', 'category_ids', 'attributes']
+        )));
 
         foreach ($translatableFields as $field) {
             if (array_key_exists($field, $validated)) {
@@ -257,6 +308,21 @@ class ExperienceController extends Controller
         if (array_key_exists('amenity_ids', $validated)) {
             $this->assertAmenityIds($validated['amenity_ids'] ?? []);
             $experience->amenities()->sync($validated['amenity_ids'] ?? []);
+        }
+
+        if (array_key_exists('category_ids', $validated)) {
+            $categoryIds = $validated['category_ids'] ?? [];
+            $this->assertExperienceCategoryIds($categoryIds);
+            $experience->categories()->sync($categoryIds);
+
+            if (! empty($categoryIds)) {
+                $experience->category_id = (int) $categoryIds[0];
+                $experience->save();
+            }
+        }
+
+        if (array_key_exists('attributes', $validated)) {
+            $experience->syncAttributeValues($validated['attributes'] ?? []);
         }
 
         if ($this->scheduleWasProvided($validated)) {
@@ -300,7 +366,8 @@ class ExperienceController extends Controller
             'duration_minutes' => ['nullable', 'integer', 'min:15'],
             'max_guests' => ['nullable', 'integer', 'min:1'],
             'min_age' => ['nullable', 'integer', 'min:0'],
-            'difficulty' => ['nullable', Rule::in(['easy', 'medium', 'hard'])],
+            'availability_start' => ['nullable', 'date'],
+            'availability_end' => ['nullable', 'date', 'after_or_equal:availability_start'],
             'price_amount' => ['nullable', 'numeric', 'min:0'],
             'currency' => ['nullable', 'string', 'size:3'],
             'price_mode' => ['nullable', Rule::in(['per_person', 'per_group'])],
@@ -327,6 +394,11 @@ class ExperienceController extends Controller
             'important_notes' => ['nullable', 'string'],
             'amenity_ids' => ['nullable', 'array'],
             'amenity_ids.*' => ['integer', 'exists:categories,id'],
+            'category_ids' => ['nullable', 'array', 'max:3'],
+            'category_ids.*' => ['integer', 'exists:categories,id'],
+            'attributes' => ['nullable', 'array'],
+            'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
+            'attributes.*.value' => ['nullable'],
         ];
 
         return $request->validate($rules);
@@ -459,6 +531,82 @@ class ExperienceController extends Controller
             ->exists();
 
         abort_unless($exists, 422, 'Category must exist and be of type experience category.');
+    }
+
+    private function applyAttributeFilter($query, int $attributeId, mixed $value): void
+    {
+        if ($value === null || $value === '' || $value === [] || $attributeId <= 0) {
+            return;
+        }
+
+        $attribute = Attribute::query()->find($attributeId);
+        if (! $attribute) {
+            return;
+        }
+
+        $query->whereHas('attributeValues', function ($q) use ($attribute, $value) {
+            $q->where('attribute_id', $attribute->id);
+
+            switch ($attribute->input_type) {
+                case Attribute::TYPE_BOOLEAN:
+                    $q->where('value_boolean', filter_var($value, FILTER_VALIDATE_BOOLEAN));
+                    break;
+                case Attribute::TYPE_NUMBER:
+                    $q->where('value_number', (float) $value);
+                    break;
+                case Attribute::TYPE_RANGE:
+                    if (is_array($value)) {
+                        if (isset($value['min'])) {
+                            $q->where('value_number', '>=', (float) $value['min']);
+                        }
+                        if (isset($value['max'])) {
+                            $q->where('value_number', '<=', (float) $value['max']);
+                        }
+                    }
+                    break;
+                case Attribute::TYPE_MULTISELECT:
+                    $values = is_array($value) ? $value : [$value];
+                    $q->where(function ($inner) use ($values) {
+                        foreach ($values as $v) {
+                            $inner->orWhereJsonContains('value_json', (string) $v);
+                        }
+                    });
+                    break;
+                case Attribute::TYPE_SELECT:
+                case Attribute::TYPE_RADIO:
+                    $values = is_array($value) ? $value : [$value];
+                    $q->whereIn('value_string', array_map('strval', $values));
+                    break;
+                case Attribute::TYPE_DATE:
+                    $q->where('value_string', (string) $value);
+                    break;
+                default:
+                    $q->where('value_string', (string) $value);
+            }
+        });
+    }
+
+    private function resolvePrimaryCategory(array $validated): array
+    {
+        if (empty($validated['category_id']) && ! empty($validated['category_ids'])) {
+            $validated['category_id'] = (int) $validated['category_ids'][0];
+        }
+
+        return $validated;
+    }
+
+    private function assertExperienceCategoryIds(array $categoryIds): void
+    {
+        if ($categoryIds === []) {
+            return;
+        }
+
+        $count = Category::query()
+            ->ofType(Category::TYPE_EXPERIENCE_CATEGORY)
+            ->whereIn('id', $categoryIds)
+            ->count();
+
+        abort_unless($count === count($categoryIds), 422, 'All categories must exist and be of type experience category.');
     }
 
     private function prepareMediaPayload(

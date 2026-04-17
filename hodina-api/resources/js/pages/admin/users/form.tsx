@@ -194,7 +194,7 @@ export default function UserFormPage({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="guesthouse_id">Pensiune</Label>
+                                    <Label htmlFor="guesthouse_id">Host</Label>
                                     <select
                                         id="guesthouse_id"
                                         className={selectClassName}
@@ -209,7 +209,7 @@ export default function UserFormPage({
                                         }
                                         disabled={form.data.role !== 'host'}
                                     >
-                                        <option value="">Fara pensiune</option>
+                                        <option value="">Fara host</option>
                                         {guesthouseOptions.map((guesthouse) => (
                                             <option
                                                 key={guesthouse.id}
@@ -226,7 +226,7 @@ export default function UserFormPage({
 
                                 <div className="space-y-2">
                                     <Label htmlFor="guesthouse_role">
-                                        Rol in pensiune
+                                        Rol in host
                                     </Label>
                                     <select
                                         id="guesthouse_role"

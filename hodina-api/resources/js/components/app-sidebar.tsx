@@ -16,6 +16,7 @@ import {
     Building2,
     LayoutGrid,
     Shapes,
+    SlidersHorizontal,
     Users,
 } from 'lucide-react';
 import AppLogo from './app-logo';
@@ -32,7 +33,7 @@ export function AppSidebar() {
                   icon: LayoutGrid,
               },
               {
-                  title: 'Pensiuni',
+                  title: 'Hosts',
                   href: '/admin/guesthouses',
                   icon: Building2,
               },
@@ -47,7 +48,12 @@ export function AppSidebar() {
                   icon: Shapes,
               },
               {
-                  title: 'Rezervari',
+                  title: 'Atribute',
+                  href: '/admin/attributes',
+                  icon: SlidersHorizontal,
+              },
+              {
+                  title: 'Rezervări',
                   href: '/admin/bookings',
                   icon: BookCheck,
               },

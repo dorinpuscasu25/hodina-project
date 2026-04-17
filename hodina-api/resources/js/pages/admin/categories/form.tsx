@@ -35,7 +35,6 @@ interface ParentOption {
 interface CategoryFormData {
     id: number | null;
     type: string;
-    code: string;
     parent_id: number | null;
     name: Record<string, string>;
     description: Record<string, string>;
@@ -179,20 +178,6 @@ export default function CategoryFormPage({
                                         ))}
                                     </select>
                                     <InputError message={form.errors.type} />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="code">Cod</Label>
-                                    <Input
-                                        id="code"
-                                        value={form.data.code}
-                                        onChange={(event) =>
-                                            form.setData(
-                                                'code',
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
                                 </div>
 
                                 <div className="space-y-2">
@@ -381,11 +366,17 @@ export default function CategoryFormPage({
 
                             <div className="space-y-3">
                                 <Label>Traduceri</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Numele e obligatoriu minim într-o limbă. Celelalte se completează automat cu prima traducere existentă.
+                                </p>
                                 <LocaleTabs
                                     locales={locales}
                                     active={activeLocale}
                                     onChange={setActiveLocale}
                                 />
+                                {form.errors.name ? (
+                                    <p className="text-sm text-destructive">{form.errors.name}</p>
+                                ) : null}
                             </div>
 
                             <div className="grid gap-5">

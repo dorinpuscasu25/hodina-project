@@ -38,7 +38,7 @@ export default function Login() {
                   Host dashboard
                 </p>
                 <h1 className="text-4xl font-semibold tracking-tight text-[#17332d]">
-                  Intră în contul pensiunii
+                  Intră în contul hostsi
                 </h1>
                 <p className="text-base leading-7 text-[#5c685f]">
                   Gestionezi listările, calendarul, rezervările și echipa direct dintr-un singur loc.
@@ -108,7 +108,7 @@ export default function Login() {
             <div className="max-w-md space-y-4">
               <p className="text-sm uppercase tracking-[0.3em] text-white/80">Moldova stays</p>
               <h2 className="text-5xl font-semibold leading-tight">
-                Pensiuni, experiențe și calendar într-un dashboard care chiar lucrează.
+                Hosts, experiențe și calendar într-un dashboard care chiar lucrează.
               </h2>
               <p className="text-lg leading-8 text-white/85">
                 Confirmi rezervări, vezi locurile libere, coordonezi echipa și discuți cu oaspeții după confirmare.

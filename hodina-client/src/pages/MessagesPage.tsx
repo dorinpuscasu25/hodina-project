@@ -97,7 +97,7 @@ export const MessagesPage = ({
 
   useSeo({
     title: 'Mesajele mele',
-    description: 'Conversațiile active dintre tine și pensiunile la care ai rezervat.',
+    description: 'Conversațiile active dintre tine și hostsle la care ai rezervat.',
     canonicalPath: selectedBooking ? `/account/messages?booking=${selectedBooking}` : '/account/messages',
     noindex: true,
   });
