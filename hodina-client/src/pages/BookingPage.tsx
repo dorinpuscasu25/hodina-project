@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, Check, Clock, Loader2, Minus, Plus, Users } from 'lucide-react';
+import { Calendar, Check, ChevronRight, Clock, Loader2, Minus, Plus, Users, X } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { apiRequest, formatApiError } from '../lib/api';
 import { useSeo } from '../lib/seo';
@@ -63,6 +63,8 @@ export const BookingPage = ({
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
+  const [sessionFilterDate, setSessionFilterDate] = useState('');
 
   useEffect(() => {
     let ignore = false;
@@ -242,8 +244,29 @@ export const BookingPage = ({
       validationSession: ro ? 'Alege o sesiune disponibilă.' : ru ? 'Выберите доступный сеанс.' : 'Pick an available session.',
       validationDates: ro ? 'Selectează check-in și check-out.' : ru ? 'Выберите даты заезда и выезда.' : 'Select check-in and check-out.',
       requiredTag: ro ? 'Câmpuri obligatorii' : ru ? 'Обязательные поля' : 'Required fields',
+      pickSessionPlaceholder: ro ? 'Apasă pentru a alege' : ru ? 'Нажмите, чтобы выбрать' : 'Tap to select',
+      changeSession: ro ? 'Schimbă' : ru ? 'Изменить' : 'Change',
+      filterByDate: ro ? 'Filtrează după dată' : ru ? 'Фильтр по дате' : 'Filter by date',
+      clearFilter: ro ? 'Șterge filtrul' : ru ? 'Сбросить фильтр' : 'Clear filter',
+      noSessionsForDate: ro
+        ? 'Nu există sesiuni pentru această dată.'
+        : ru
+          ? 'Нет сеансов на эту дату.'
+          : 'No sessions for this date.',
+      closeModal: ro ? 'Închide' : ru ? 'Закрыть' : 'Close',
+      availableSessions: ro ? 'Sesiuni disponibile' : ru ? 'Доступные сеансы' : 'Available sessions',
+      requiredField: ro ? 'obligatoriu' : ru ? 'обязательно' : 'required',
     };
   }, [language, maxGuestsForListing]);
+
+  const filteredSessions = useMemo(() => {
+    if (!sessionFilterDate) return sessions;
+    return sessions.filter((session) => {
+      if (!session.starts_at) return false;
+      const sessionDate = new Date(session.starts_at).toISOString().split('T')[0];
+      return sessionDate === sessionFilterDate;
+    });
+  }, [sessions, sessionFilterDate]);
 
   const handleSubmit = async () => {
     if (!listing) return;
@@ -409,7 +432,7 @@ export const BookingPage = ({
 
             {listingKind === 'experience' ? (
               <div className="rounded-2xl bg-white p-6 shadow-sm">
-                <div className="mb-6 flex items-center gap-3">
+                <div className="mb-4 flex items-center gap-3">
                   <Calendar className="h-6 w-6 text-[#002626]" />
                   <h2 className="text-xl font-bold text-gray-900">
                     {labels.pickSession}
@@ -426,131 +449,69 @@ export const BookingPage = ({
                         : 'No sessions available right now.'}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {sessions.map((session) => {
-                      const isSelected = selectedSessionId === session.id;
-                      const isSoldOut = session.spots_left <= 0;
-                      const pieces = formatSessionDate(session.starts_at);
-                      const totalCap = session.capacity ?? session.spots_left + session.reserved_guests;
-                      const filledPct =
-                        totalCap > 0
-                          ? Math.max(0, Math.min(100, (session.reserved_guests / totalCap) * 100))
-                          : 0;
-
-                      return (
-                        <button
-                          key={session.id}
-                          onClick={() => !isSoldOut && setSelectedSessionId(session.id)}
-                          disabled={isSoldOut}
-                          className={`group relative overflow-hidden rounded-2xl border-2 p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
-                            isSelected
-                              ? 'border-[#002626] bg-[#002626] text-white shadow-lg'
-                              : isSoldOut
-                                ? 'border-gray-200 bg-gray-50'
-                                : 'border-gray-200 bg-white hover:-translate-y-0.5 hover:border-[#002626] hover:shadow-md'
-                          }`}
-                        >
-                          <div className="flex items-start gap-4">
-                            <div
-                              className={`flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-xl ${
-                                isSelected ? 'bg-white/10' : 'bg-[#fff4f1]'
-                              }`}
-                            >
-                              <span
-                                className={`text-xs font-semibold uppercase tracking-wide ${
-                                  isSelected ? 'text-white/80' : 'text-[#944236]'
-                                }`}
-                              >
-                                {pieces.month}
-                              </span>
-                              <span
-                                className={`text-2xl font-bold leading-none ${
-                                  isSelected ? 'text-white' : 'text-[#002626]'
-                                }`}
-                              >
-                                {pieces.day}
-                              </span>
-                              <span
-                                className={`mt-0.5 text-[10px] uppercase ${
-                                  isSelected ? 'text-white/70' : 'text-gray-500'
-                                }`}
-                              >
-                                {pieces.weekday}
-                              </span>
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <Clock
-                                  className={`h-4 w-4 ${
-                                    isSelected ? 'text-white/80' : 'text-gray-500'
-                                  }`}
-                                />
-                                <span className="text-base font-semibold">{pieces.time}</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsSessionModalOpen(true)}
+                    className={`group flex w-full items-center justify-between gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
+                      selectedSession
+                        ? 'border-[#002626] bg-[#002626] text-white shadow-lg'
+                        : 'border-gray-200 bg-white hover:border-[#002626] hover:shadow-md'
+                    }`}
+                  >
+                    {selectedSession ? (
+                      (() => {
+                        const pieces = formatSessionDate(selectedSession.starts_at);
+                        return (
+                          <>
+                            <div className="flex items-center gap-4">
+                              <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-white/10">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-white/80">
+                                  {pieces.month}
+                                </span>
+                                <span className="text-2xl font-bold leading-none text-white">
+                                  {pieces.day}
+                                </span>
+                                <span className="mt-0.5 text-[10px] uppercase text-white/70">
+                                  {pieces.weekday}
+                                </span>
                               </div>
-                              {session.title_override || session.title ? (
-                                <p
-                                  className={`mt-1 line-clamp-1 text-sm ${
-                                    isSelected ? 'text-white/90' : 'text-gray-700'
-                                  }`}
-                                >
-                                  {session.title_override || session.title}
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-white/80" />
+                                  <span className="text-base font-semibold">{pieces.time}</span>
+                                </div>
+                                {selectedSession.title_override || selectedSession.title ? (
+                                  <p className="mt-1 line-clamp-1 text-sm text-white/90">
+                                    {selectedSession.title_override || selectedSession.title}
+                                  </p>
+                                ) : null}
+                                <p className="mt-1 text-xs text-white/80">
+                                  {selectedSession.spots_left} {labels.spotsLeft}
                                 </p>
-                              ) : null}
-
-                              <div
-                                className={`mt-2 h-1.5 w-full overflow-hidden rounded-full ${
-                                  isSelected ? 'bg-white/20' : 'bg-gray-100'
-                                }`}
-                              >
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    isSelected
-                                      ? 'bg-white'
-                                      : filledPct > 80
-                                        ? 'bg-red-400'
-                                        : filledPct > 50
-                                          ? 'bg-amber-400'
-                                          : 'bg-emerald-500'
-                                  }`}
-                                  style={{ width: `${filledPct}%` }}
-                                />
-                              </div>
-
-                              <div className="mt-2 flex items-center justify-between">
-                                <span
-                                  className={`text-xs font-medium ${
-                                    isSelected
-                                      ? 'text-white/90'
-                                      : isSoldOut
-                                        ? 'text-red-500'
-                                        : 'text-gray-600'
-                                  }`}
-                                >
-                                  {isSoldOut
-                                    ? labels.soldOut
-                                    : `${session.spots_left} ${labels.spotsLeft}`}
-                                </span>
-                                <span
-                                  className={`text-sm font-bold ${
-                                    isSelected ? 'text-white' : 'text-[#002626]'
-                                  }`}
-                                >
-                                  {formatCurrency(experiencePrice, listing.currency)}
-                                </span>
                               </div>
                             </div>
+                            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                              <span className="hidden sm:inline">{labels.changeSession}</span>
+                              <ChevronRight className="h-5 w-5" />
+                            </div>
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#fff4f1]">
+                            <Calendar className="h-6 w-6 text-[#944236]" />
                           </div>
-
-                          {isSelected ? (
-                            <div className="absolute right-3 top-3 rounded-full bg-white p-1 text-[#002626]">
-                              <Check className="h-3 w-3" strokeWidth={3} />
-                            </div>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{labels.pickSession}</p>
+                            <p className="text-xs text-gray-500">{labels.pickSessionPlaceholder}</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-gray-400 transition-transform group-hover:translate-x-1" />
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             ) : (
@@ -694,16 +655,27 @@ export const BookingPage = ({
             </div>
 
             <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-xl font-bold text-gray-900">{t.booking.contactInfo}</h2>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {t.booking.contactInfo}
+                  <RequiredMark />
+                </h2>
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+                  <span aria-hidden="true">*</span>
+                  {labels.requiredTag}
+                </span>
+              </div>
               <div className="space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700">
                     Nume complet
                     <RequiredMark />
+                    <span className="ml-1 text-xs font-normal text-red-500">({labels.requiredField})</span>
                   </label>
                   <input
                     type="text"
                     required
+                    aria-required="true"
                     value={contactName}
                     onChange={(event) => setContactName(event.target.value)}
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-[#002626] focus:outline-none"
@@ -713,10 +685,12 @@ export const BookingPage = ({
                   <label className="mb-2 block text-sm font-medium text-gray-700">
                     {t.account.email}
                     <RequiredMark />
+                    <span className="ml-1 text-xs font-normal text-red-500">({labels.requiredField})</span>
                   </label>
                   <input
                     type="email"
                     required
+                    aria-required="true"
                     value={contactEmail}
                     onChange={(event) => setContactEmail(event.target.value)}
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-[#002626] focus:outline-none"
@@ -726,10 +700,12 @@ export const BookingPage = ({
                   <label className="mb-2 block text-sm font-medium text-gray-700">
                     {t.account.phone}
                     <RequiredMark />
+                    <span className="ml-1 text-xs font-normal text-red-500">({labels.requiredField})</span>
                   </label>
                   <input
                     type="tel"
                     required
+                    aria-required="true"
                     value={contactPhone}
                     onChange={(event) => setContactPhone(event.target.value)}
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-[#002626] focus:outline-none"
@@ -852,6 +828,201 @@ export const BookingPage = ({
           </div>
         </div>
       </div>
+
+      {isSessionModalOpen && listingKind === 'experience' ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-0 sm:items-center sm:px-4"
+          onClick={() => setIsSessionModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-[#002626]" />
+                <h3 className="text-lg font-bold text-gray-900">{labels.pickSession}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSessionModalOpen(false)}
+                aria-label={labels.closeModal}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="border-b border-gray-100 px-5 py-4">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {labels.filterByDate}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={sessionFilterDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(event) => setSessionFilterDate(event.target.value)}
+                  className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-[#002626] focus:outline-none"
+                />
+                {sessionFilterDate ? (
+                  <button
+                    type="button"
+                    onClick={() => setSessionFilterDate('')}
+                    className="rounded-xl border border-gray-300 px-3 py-2.5 text-xs font-semibold text-gray-700 transition-colors hover:border-[#002626] hover:text-[#002626]"
+                  >
+                    {labels.clearFilter}
+                  </button>
+                ) : null}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                {filteredSessions.length} {labels.availableSessions.toLowerCase()}
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {filteredSessions.length === 0 ? (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-6 py-10 text-center text-gray-600">
+                  {labels.noSessionsForDate}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {filteredSessions.map((session) => {
+                    const isSelected = selectedSessionId === session.id;
+                    const isSoldOut = session.spots_left <= 0;
+                    const pieces = formatSessionDate(session.starts_at);
+                    const totalCap =
+                      session.capacity ?? session.spots_left + session.reserved_guests;
+                    const filledPct =
+                      totalCap > 0
+                        ? Math.max(0, Math.min(100, (session.reserved_guests / totalCap) * 100))
+                        : 0;
+
+                    return (
+                      <button
+                        key={session.id}
+                        onClick={() => {
+                          if (isSoldOut) return;
+                          setSelectedSessionId(session.id);
+                          setIsSessionModalOpen(false);
+                        }}
+                        disabled={isSoldOut}
+                        className={`group relative overflow-hidden rounded-2xl border-2 p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+                          isSelected
+                            ? 'border-[#002626] bg-[#002626] text-white shadow-lg'
+                            : isSoldOut
+                              ? 'border-gray-200 bg-gray-50'
+                              : 'border-gray-200 bg-white hover:-translate-y-0.5 hover:border-[#002626] hover:shadow-md'
+                        }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div
+                            className={`flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-xl ${
+                              isSelected ? 'bg-white/10' : 'bg-[#fff4f1]'
+                            }`}
+                          >
+                            <span
+                              className={`text-xs font-semibold uppercase tracking-wide ${
+                                isSelected ? 'text-white/80' : 'text-[#944236]'
+                              }`}
+                            >
+                              {pieces.month}
+                            </span>
+                            <span
+                              className={`text-2xl font-bold leading-none ${
+                                isSelected ? 'text-white' : 'text-[#002626]'
+                              }`}
+                            >
+                              {pieces.day}
+                            </span>
+                            <span
+                              className={`mt-0.5 text-[10px] uppercase ${
+                                isSelected ? 'text-white/70' : 'text-gray-500'
+                              }`}
+                            >
+                              {pieces.weekday}
+                            </span>
+                          </div>
+
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Clock
+                                className={`h-4 w-4 ${
+                                  isSelected ? 'text-white/80' : 'text-gray-500'
+                                }`}
+                              />
+                              <span className="text-base font-semibold">{pieces.time}</span>
+                            </div>
+                            {session.title_override || session.title ? (
+                              <p
+                                className={`mt-1 line-clamp-1 text-sm ${
+                                  isSelected ? 'text-white/90' : 'text-gray-700'
+                                }`}
+                              >
+                                {session.title_override || session.title}
+                              </p>
+                            ) : null}
+
+                            <div
+                              className={`mt-2 h-1.5 w-full overflow-hidden rounded-full ${
+                                isSelected ? 'bg-white/20' : 'bg-gray-100'
+                              }`}
+                            >
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  isSelected
+                                    ? 'bg-white'
+                                    : filledPct > 80
+                                      ? 'bg-red-400'
+                                      : filledPct > 50
+                                        ? 'bg-amber-400'
+                                        : 'bg-emerald-500'
+                                }`}
+                                style={{ width: `${filledPct}%` }}
+                              />
+                            </div>
+
+                            <div className="mt-2 flex items-center justify-between">
+                              <span
+                                className={`text-xs font-medium ${
+                                  isSelected
+                                    ? 'text-white/90'
+                                    : isSoldOut
+                                      ? 'text-red-500'
+                                      : 'text-gray-600'
+                                }`}
+                              >
+                                {isSoldOut
+                                  ? labels.soldOut
+                                  : `${session.spots_left} ${labels.spotsLeft}`}
+                              </span>
+                              <span
+                                className={`text-sm font-bold ${
+                                  isSelected ? 'text-white' : 'text-[#002626]'
+                                }`}
+                              >
+                                {formatCurrency(experiencePrice, listing.currency)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {isSelected ? (
+                          <div className="absolute right-3 top-3 rounded-full bg-white p-1 text-[#002626]">
+                            <Check className="h-3 w-3" strokeWidth={3} />
+                          </div>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

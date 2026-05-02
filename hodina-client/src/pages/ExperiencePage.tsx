@@ -7,7 +7,6 @@ import {
   Clock,
   MapPin,
   MessageCircle,
-  Share2,
   Star,
   Users,
   X,
@@ -174,20 +173,6 @@ export const ExperiencePage = ({
     setCurrentImageIndex((current) => (images.length ? (current - 1 + images.length) % images.length : 0));
   };
 
-  const handleShare = async () => {
-    if (!listing) return;
-    const url = typeof window !== 'undefined' ? window.location.href : '';
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: listing.title, url });
-      } else {
-        await navigator.clipboard?.writeText(url);
-      }
-    } catch {
-      // user dismissed or clipboard unavailable — noop
-    }
-  };
-
   const goToBooking = (sessionId?: number) => {
     if (!listing) return;
     onNavigate('booking', {
@@ -283,17 +268,6 @@ export const ExperiencePage = ({
           >
             <ChevronLeft className="h-4 w-4" />
             <span>{language === 'ro' ? 'Înapoi' : language === 'ru' ? 'Назад' : 'Back'}</span>
-          </button>
-
-          <button
-            onClick={() => void handleShare()}
-            className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400"
-            aria-label="Share"
-          >
-            <Share2 className="h-4 w-4" />
-            <span className="hidden sm:inline">
-              {language === 'ro' ? 'Distribuie' : language === 'ru' ? 'Поделиться' : 'Share'}
-            </span>
           </button>
         </div>
 
@@ -624,31 +598,6 @@ export const ExperiencePage = ({
                     })}
                   </div>
                 )}
-              </section>
-            ) : null}
-
-            {listing.latitude && listing.longitude ? (
-              <section className="mb-8 border-t border-gray-200 pt-8">
-                <h2 className="mb-4 text-xl font-bold text-gray-900 sm:text-2xl">
-                  {language === 'ro' ? 'Unde se întâmplă' : language === 'ru' ? 'Где это' : 'Where it happens'}
-                </h2>
-                {listingLocationName || listing.address || listing.city ? (
-                  <p className="mb-3 text-sm text-gray-600 break-words">
-                    {[listingLocationName, listing.address, listing.city, listing.country]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
-                ) : null}
-                <div className="overflow-hidden rounded-2xl border border-gray-200">
-                  <iframe
-                    title="Harta locației"
-                    width="100%"
-                    height="320"
-                    loading="lazy"
-                    style={{ border: 0, display: 'block' }}
-                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(listing.longitude) - 0.02}%2C${Number(listing.latitude) - 0.01}%2C${Number(listing.longitude) + 0.02}%2C${Number(listing.latitude) + 0.01}&layer=mapnik&marker=${listing.latitude}%2C${listing.longitude}`}
-                  />
-                </div>
               </section>
             ) : null}
 

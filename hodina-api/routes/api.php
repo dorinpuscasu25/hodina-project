@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AccommodationController;
+use App\Http\Controllers\Api\V1\AiPlannerController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ConversationController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
@@ -27,6 +28,8 @@ Route::prefix('v1')->group(function () {
         Route::get('accommodations', [AccommodationController::class, 'index']);
         Route::get('accommodations/{accommodation}', [AccommodationController::class, 'show']);
         Route::get('guesthouses/{guesthouse}', [GuesthouseController::class, 'show']);
+
+        Route::post('ai/plan', [AiPlannerController::class, 'plan']);
     });
 
     Route::prefix('client/auth')->group(function () {
