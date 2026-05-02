@@ -6,6 +6,8 @@ import { AuthModal } from './components/AuthModal';
 import { CookieBanner } from './components/CookieBanner';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { AiChatWidget } from './components/AiChatWidget';
+import type { AiChatMessage, AiSuggestion } from './components/AiPlanner';
 import { HomePage } from './pages/HomePage';
 import { LegalPage } from './pages/LegalPage';
 import { ListingPage } from './pages/ListingPage';
@@ -98,6 +100,8 @@ function AppShell() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [aiMessages, setAiMessages] = useState<AiChatMessage[]>([]);
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
 
   const currentPage = resolveCurrentPage(location.pathname);
 
@@ -146,6 +150,14 @@ function AppShell() {
     navigate(targetPath);
   };
 
+  const handleAiSuggestion = (suggestion: AiSuggestion) => {
+    handleNavigate('experience', {
+      id: suggestion.id,
+      slug: suggestion.slug,
+      kind: suggestion.kind,
+    });
+  };
+
   const handleAuthSuccess = (payload: AuthPayload) => {
     setIsAuthModalOpen(false);
 
@@ -192,7 +204,17 @@ function AppShell() {
 
       <main>
         <Routes>
-          <Route path="/" element={<HomePage onNavigate={handleNavigate} />} />
+          <Route
+            path="/"
+            element={
+              <HomePage
+                onNavigate={handleNavigate}
+                aiMessages={aiMessages}
+                setAiMessages={setAiMessages}
+                onAiSuggestionClick={handleAiSuggestion}
+              />
+            }
+          />
           <Route path="/explore" element={<ListingPage onNavigate={handleNavigate} />} />
           <Route
             path="/experiences/:identifier"
@@ -241,6 +263,15 @@ function AppShell() {
       />
 
       <CookieBanner onNavigate={handleNavigate} />
+
+      <AiChatWidget
+        messages={aiMessages}
+        setMessages={setAiMessages}
+        onSuggestionClick={handleAiSuggestion}
+        isOpen={isAiChatOpen}
+        onOpen={() => setIsAiChatOpen(true)}
+        onClose={() => setIsAiChatOpen(false)}
+      />
     </div>
   );
 }

@@ -54,6 +54,8 @@ export const ExperiencePage = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
+  const [sessionFilterDate, setSessionFilterDate] = useState('');
 
   useEffect(() => {
     let ignore = false;
@@ -556,9 +558,21 @@ export const ExperiencePage = ({
 
             {listingKind === 'experience' ? (
               <section className="mb-8 border-t border-gray-200 pt-8">
-                <h2 className="mb-4 text-xl font-bold text-gray-900 sm:text-2xl">
-                  {language === 'ro' ? 'Sesiuni disponibile' : language === 'ru' ? 'Доступные сеансы' : 'Available sessions'}
-                </h2>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                    {language === 'ro' ? 'Sesiuni disponibile' : language === 'ru' ? 'Доступные сеансы' : 'Available sessions'}
+                  </h2>
+                  {sessions.length > 0 ? (
+                    <span className="text-sm text-gray-500">
+                      {sessions.length}{' '}
+                      {language === 'ro'
+                        ? 'sesiuni'
+                        : language === 'ru'
+                          ? 'сеансов'
+                          : 'sessions'}
+                    </span>
+                  ) : null}
+                </div>
 
                 {sessions.length === 0 ? (
                   <div className="rounded-2xl border border-gray-200 bg-gray-50 px-6 py-5 text-gray-600">
@@ -569,34 +583,68 @@ export const ExperiencePage = ({
                         : 'No sessions available right now. Please check back soon.'}
                   </div>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {sessions.slice(0, 6).map((session) => {
-                      const isSoldOut = session.spots_left <= 0;
-                      const badge = formatSessionBadge(session.starts_at);
-                      return (
-                        <button
-                          key={session.id}
-                          onClick={() => !isSoldOut && goToBooking(session.id)}
-                          disabled={isSoldOut}
-                          className="group flex items-center gap-4 rounded-2xl border-2 border-gray-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#002626] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-gray-200 disabled:hover:shadow-none"
-                        >
-                          <div className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-[#fff4f1]">
-                            <span className="text-[10px] font-semibold uppercase text-[#944236]">{badge.month}</span>
-                            <span className="text-xl font-bold leading-none text-[#002626]">{badge.day}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="truncate font-semibold text-gray-900">{badge.time}</p>
-                            <p className={`truncate text-xs font-medium ${isSoldOut ? 'text-red-500' : 'text-gray-600'}`}>
-                              {isSoldOut
-                                ? language === 'ro' ? 'Epuizat' : language === 'ru' ? 'Распродано' : 'Sold out'
-                                : `${session.spots_left} ${language === 'ro' ? 'locuri' : language === 'ru' ? 'мест' : 'spots'}`}
-                            </p>
-                          </div>
-                          <ChevronRight className="h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-[#002626]" />
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {sessions.slice(0, 2).map((session) => {
+                        const isSoldOut = session.spots_left <= 0;
+                        const badge = formatSessionBadge(session.starts_at);
+                        return (
+                          <button
+                            key={session.id}
+                            onClick={() => !isSoldOut && goToBooking(session.id)}
+                            disabled={isSoldOut}
+                            className="group flex items-center gap-4 rounded-2xl border-2 border-gray-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#002626] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-gray-200 disabled:hover:shadow-none"
+                          >
+                            <div className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-[#fff4f1]">
+                              <span className="text-[10px] font-semibold uppercase text-[#944236]">{badge.month}</span>
+                              <span className="text-xl font-bold leading-none text-[#002626]">{badge.day}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate font-semibold text-gray-900">{badge.time}</p>
+                              <p className={`truncate text-xs font-medium ${isSoldOut ? 'text-red-500' : 'text-gray-600'}`}>
+                                {isSoldOut
+                                  ? language === 'ro' ? 'Epuizat' : language === 'ru' ? 'Распродано' : 'Sold out'
+                                  : `${session.spots_left} ${language === 'ro' ? 'locuri' : language === 'ru' ? 'мест' : 'spots'}`}
+                              </p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-[#002626]" />
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSessionFilterDate('');
+                        setIsSessionsModalOpen(true);
+                      }}
+                      className="group mt-3 flex w-full items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-gray-300 bg-white p-4 text-left transition-all hover:border-[#002626] hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#002626] text-white">
+                          <Calendar className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {language === 'ro'
+                              ? 'Vezi toate sesiunile'
+                              : language === 'ru'
+                                ? 'Все сеансы'
+                                : 'View all sessions'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {language === 'ro'
+                              ? 'Filtrează după dată și alege ușor'
+                              : language === 'ru'
+                                ? 'Фильтр по дате и удобный выбор'
+                                : 'Filter by date and pick easily'}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#002626]" />
+                    </button>
+                  </>
                 )}
               </section>
             ) : null}
@@ -803,6 +851,149 @@ export const ExperiencePage = ({
           </button>
         </div>
       </div>
+
+      {isSessionsModalOpen && listingKind === 'experience' ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-0 sm:items-center sm:px-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setIsSessionsModalOpen(false)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-[#002626]" />
+                <h3 className="text-lg font-bold text-gray-900">
+                  {language === 'ro'
+                    ? 'Sesiuni disponibile'
+                    : language === 'ru'
+                      ? 'Доступные сеансы'
+                      : 'Available sessions'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSessionsModalOpen(false)}
+                aria-label="Close"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="border-b border-gray-100 px-5 py-4">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {language === 'ro'
+                  ? 'Filtrează după dată'
+                  : language === 'ru'
+                    ? 'Фильтр по дате'
+                    : 'Filter by date'}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={sessionFilterDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(event) => setSessionFilterDate(event.target.value)}
+                  className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-[#002626] focus:outline-none"
+                />
+                {sessionFilterDate ? (
+                  <button
+                    type="button"
+                    onClick={() => setSessionFilterDate('')}
+                    className="rounded-xl border border-gray-300 px-3 py-2.5 text-xs font-semibold text-gray-700 transition-colors hover:border-[#002626] hover:text-[#002626]"
+                  >
+                    {language === 'ro'
+                      ? 'Șterge filtrul'
+                      : language === 'ru'
+                        ? 'Сбросить'
+                        : 'Clear'}
+                  </button>
+                ) : null}
+              </div>
+              {(() => {
+                const filtered = sessionFilterDate
+                  ? sessions.filter((s) => {
+                      if (!s.starts_at) return false;
+                      return new Date(s.starts_at).toISOString().split('T')[0] === sessionFilterDate;
+                    })
+                  : sessions;
+                return (
+                  <p className="mt-2 text-xs text-gray-500">
+                    {filtered.length}{' '}
+                    {language === 'ro'
+                      ? 'sesiuni'
+                      : language === 'ru'
+                        ? 'сеансов'
+                        : 'sessions'}
+                  </p>
+                );
+              })()}
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {(() => {
+                const filtered = sessionFilterDate
+                  ? sessions.filter((s) => {
+                      if (!s.starts_at) return false;
+                      return new Date(s.starts_at).toISOString().split('T')[0] === sessionFilterDate;
+                    })
+                  : sessions;
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 px-6 py-10 text-center text-gray-600">
+                      {language === 'ro'
+                        ? 'Nu există sesiuni pentru această dată.'
+                        : language === 'ru'
+                          ? 'Нет сеансов на эту дату.'
+                          : 'No sessions for this date.'}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {filtered.map((session) => {
+                      const isSoldOut = session.spots_left <= 0;
+                      const badge = formatSessionBadge(session.starts_at);
+                      return (
+                        <button
+                          key={session.id}
+                          onClick={() => {
+                            if (isSoldOut) return;
+                            setIsSessionsModalOpen(false);
+                            goToBooking(session.id);
+                          }}
+                          disabled={isSoldOut}
+                          className="group flex items-center gap-4 rounded-2xl border-2 border-gray-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#002626] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-gray-200 disabled:hover:shadow-none"
+                        >
+                          <div className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-[#fff4f1]">
+                            <span className="text-[10px] font-semibold uppercase text-[#944236]">{badge.month}</span>
+                            <span className="text-xl font-bold leading-none text-[#002626]">{badge.day}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate font-semibold text-gray-900">{badge.time}</p>
+                            <p className={`truncate text-xs font-medium ${isSoldOut ? 'text-red-500' : 'text-gray-600'}`}>
+                              {isSoldOut
+                                ? language === 'ro' ? 'Epuizat' : language === 'ru' ? 'Распродано' : 'Sold out'
+                                : `${session.spots_left} ${language === 'ro' ? 'locuri' : language === 'ru' ? 'мест' : 'spots'}`}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-[#002626]" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

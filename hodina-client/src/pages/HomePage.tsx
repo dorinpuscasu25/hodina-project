@@ -6,30 +6,27 @@ import { useSeo } from '../lib/seo';
 import { formatCurrency, formatDuration } from '../lib/utils';
 import type { AccommodationListing, BootstrapData, ExperienceListing } from '../types';
 import { AiPlanner } from '../components/AiPlanner';
-import { AiChatWidget } from '../components/AiChatWidget';
 import type { AiChatMessage, AiSuggestion } from '../components/AiPlanner';
 
 interface HomePageProps {
   onNavigate: (page: string, data?: Record<string, unknown>) => void;
+  aiMessages: AiChatMessage[];
+  setAiMessages: (updater: (prev: AiChatMessage[]) => AiChatMessage[]) => void;
+  onAiSuggestionClick: (suggestion: AiSuggestion) => void;
 }
 
-export const HomePage = ({ onNavigate }: HomePageProps) => {
+export const HomePage = ({
+  onNavigate,
+  aiMessages,
+  setAiMessages,
+  onAiSuggestionClick,
+}: HomePageProps) => {
   const { t, language } = useLanguage();
   const [bootstrap, setBootstrap] = useState<BootstrapData | null>(null);
   const [experiences, setExperiences] = useState<ExperienceListing[]>([]);
   const [accommodations, setAccommodations] = useState<AccommodationListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [aiMessages, setAiMessages] = useState<AiChatMessage[]>([]);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
-  const handleSuggestionClick = (suggestion: AiSuggestion) => {
-    onNavigate('experience', {
-      id: suggestion.id,
-      slug: suggestion.slug,
-      kind: suggestion.kind,
-    });
-  };
 
   useEffect(() => {
     let ignore = false;
@@ -154,7 +151,7 @@ export const HomePage = ({ onNavigate }: HomePageProps) => {
           variant="hero"
           messages={aiMessages}
           setMessages={setAiMessages}
-          onSuggestionClick={handleSuggestionClick}
+          onSuggestionClick={onAiSuggestionClick}
         />
       </section>
 
@@ -385,14 +382,6 @@ export const HomePage = ({ onNavigate }: HomePageProps) => {
         </div>
       </section>
 
-      <AiChatWidget
-        messages={aiMessages}
-        setMessages={setAiMessages}
-        onSuggestionClick={handleSuggestionClick}
-        isOpen={isChatOpen}
-        onOpen={() => setIsChatOpen(true)}
-        onClose={() => setIsChatOpen(false)}
-      />
     </div>
   );
 };
