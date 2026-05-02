@@ -60,6 +60,130 @@ const SUGGESTION_PROMPTS: Record<'ro' | 'ru' | 'en', string[]> = {
   ],
 };
 
+interface HeroTemplate {
+  emoji: string;
+  title: string;
+  meta: string;
+  prompt: string;
+}
+
+const HERO_TEMPLATES: Record<'ro' | 'ru' | 'en', HeroTemplate[]> = {
+  ro: [
+    {
+      emoji: '🍷',
+      title: 'Weekend la cramă',
+      meta: '2 zile · degustare + cazare',
+      prompt: 'Vreau un weekend de 2 zile la o cramă din Moldova, cu degustare de vinuri, cină tradițională și o cazare confortabilă în apropiere.',
+    },
+    {
+      emoji: '🥾',
+      title: 'Aventură în natură',
+      meta: '1 zi · drumeție + priveliști',
+      prompt: 'Plănuiesc o ieșire de o zi în natură: drumeție ușoară, priveliști frumoase și un loc bun pentru picnic sau prânz local.',
+    },
+    {
+      emoji: '🏛️',
+      title: 'Tur cultural Orheiul Vechi',
+      meta: '1 zi · istorie + tradiții',
+      prompt: 'Aș vrea să descopăr Orheiul Vechi și împrejurimile — mănăstiri, locuri istorice și o experiență tradițională moldovenească.',
+    },
+    {
+      emoji: '💕',
+      title: 'Escapadă romantică',
+      meta: '2 nopți · doar pentru doi',
+      prompt: 'Caut o escapadă romantică de 2 nopți pentru noi doi: cazare cu vibe intim, cină specială și o activitate de cuplu.',
+    },
+    {
+      emoji: '👨‍👩‍👧',
+      title: 'Weekend cu familia',
+      meta: '2 zile · activități pentru copii',
+      prompt: 'Vreau un weekend în Moldova cu copiii: activități prietenoase pentru familie, cazare comodă și ceva educativ-distractiv.',
+    },
+    {
+      emoji: '🍳',
+      title: 'Experiență gastronomică',
+      meta: '1 zi · masterclass + degustare',
+      prompt: 'Mă interesează o experiență gastronomică: un masterclass de bucătărie tradițională moldovenească urmat de o degustare.',
+    },
+  ],
+  ru: [
+    {
+      emoji: '🍷',
+      title: 'Выходные на винодельне',
+      meta: '2 дня · дегустация + ночёвка',
+      prompt: 'Хочу провести 2 дня на винодельне в Молдове: дегустация вин, традиционный ужин и удобное жильё рядом.',
+    },
+    {
+      emoji: '🥾',
+      title: 'Приключение на природе',
+      meta: '1 день · поход + виды',
+      prompt: 'Планирую однодневную вылазку на природу: лёгкий поход, красивые виды и хорошее место для пикника или обеда.',
+    },
+    {
+      emoji: '🏛️',
+      title: 'Старый Орхей',
+      meta: '1 день · история + традиции',
+      prompt: 'Хочу открыть для себя Старый Орхей: монастыри, исторические места и аутентичная молдавская традиция.',
+    },
+    {
+      emoji: '💕',
+      title: 'Романтический побег',
+      meta: '2 ночи · только для двоих',
+      prompt: 'Ищу романтический побег на 2 ночи для двоих: уютное жильё, особенный ужин и активность для пары.',
+    },
+    {
+      emoji: '👨‍👩‍👧',
+      title: 'Семейные выходные',
+      meta: '2 дня · с детьми',
+      prompt: 'Хочу провести выходные в Молдове с детьми: семейные активности, удобное жильё и что-то познавательное.',
+    },
+    {
+      emoji: '🍳',
+      title: 'Гастрономия',
+      meta: '1 день · мастер-класс + дегустация',
+      prompt: 'Интересует гастрономический опыт: мастер-класс молдавской кухни и дегустация местных блюд.',
+    },
+  ],
+  en: [
+    {
+      emoji: '🍷',
+      title: 'Winery weekend',
+      meta: '2 days · tasting + stay',
+      prompt: 'I want a 2-day winery weekend in Moldova: wine tasting, traditional dinner and a cozy stay nearby.',
+    },
+    {
+      emoji: '🥾',
+      title: 'Nature adventure',
+      meta: '1 day · hike + views',
+      prompt: 'I am planning a one-day nature trip: easy hike, scenic views and a good spot for a picnic or local lunch.',
+    },
+    {
+      emoji: '🏛️',
+      title: 'Orheiul Vechi tour',
+      meta: '1 day · history + tradition',
+      prompt: 'I want to explore Orheiul Vechi and the area — monasteries, historical sites and a traditional Moldovan experience.',
+    },
+    {
+      emoji: '💕',
+      title: 'Romantic escape',
+      meta: '2 nights · just the two of us',
+      prompt: 'Looking for a 2-night romantic escape for the two of us: intimate stay, special dinner and a couple activity.',
+    },
+    {
+      emoji: '👨‍👩‍👧',
+      title: 'Family weekend',
+      meta: '2 days · kid-friendly',
+      prompt: 'I want a Moldova weekend with the kids: family-friendly activities, comfortable stay and something educational and fun.',
+    },
+    {
+      emoji: '🍳',
+      title: 'Food experience',
+      meta: '1 day · class + tasting',
+      prompt: 'Interested in a food experience: a Moldovan cooking masterclass followed by a tasting of local dishes.',
+    },
+  ],
+};
+
 export const AiPlanner = ({
   variant,
   messages,
@@ -280,34 +404,32 @@ export const AiPlanner = ({
                 />
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {SUGGESTION_PROMPTS[lang].map((idea) => (
-                    <button
-                      key={idea}
-                      type="button"
-                      onClick={() => setPrompt(idea)}
-                      className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:border-[#efc4be] hover:bg-white/10 hover:text-white"
-                    >
-                      {idea}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!prompt.trim() || isSending}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#efc4be] px-6 py-3 font-semibold text-[#002626] transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-5 w-5" />
-                  )}
-                  {t.plan}
-                  <ArrowRight className="h-5 w-5" />
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTION_PROMPTS[lang].map((idea) => (
+                  <button
+                    key={idea}
+                    type="button"
+                    onClick={() => setPrompt(idea)}
+                    className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:border-[#efc4be] hover:bg-white/10 hover:text-white"
+                  >
+                    {idea}
+                  </button>
+                ))}
               </div>
+
+              <button
+                type="submit"
+                disabled={!prompt.trim() || isSending}
+                className="group inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#efc4be] px-7 py-3.5 text-base font-semibold text-[#002626] shadow-lg shadow-black/20 transition-all hover:bg-white hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {isSending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-5 w-5" />
+                )}
+                <span>{t.plan}</span>
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+              </button>
             </form>
 
             {error ? (
@@ -319,16 +441,43 @@ export const AiPlanner = ({
 
           <div className="rounded-2xl bg-white/5 p-4 backdrop-blur-sm md:p-5">
             {messages.length === 0 ? (
-              <div className="flex h-full flex-col justify-center text-center">
-                <Sparkles className="mx-auto mb-3 h-10 w-10 text-[#efc4be]" />
-                <p className="text-sm font-semibold text-white">{t.inspirations}</p>
-                <p className="mt-2 text-xs text-white/70">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-[#efc4be]" />
+                  <p className="text-sm font-semibold text-white">{t.inspirations}</p>
+                </div>
+                <p className="text-xs text-white/70">
                   {lang === 'ro'
-                    ? 'Apasă pe o idee sau scrie ce vrei să faci.'
+                    ? 'Apasă pe un șablon și AI îți propune din Hodina.'
                     : lang === 'ru'
-                      ? 'Нажми на идею или опиши свой план.'
-                      : 'Tap an idea or describe your plan.'}
+                      ? 'Нажми на шаблон — ИИ подберёт варианты с Hodina.'
+                      : 'Tap a template — AI will pick from Hodina.'}
                 </p>
+
+                <div className="grid max-h-[420px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  {HERO_TEMPLATES[lang].map((template) => (
+                    <button
+                      key={template.title}
+                      type="button"
+                      onClick={() => void sendPrompt(template.prompt)}
+                      disabled={isSending}
+                      className="group flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#efc4be]/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl">
+                        {template.emoji}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {template.title}
+                        </p>
+                        <p className="mt-0.5 line-clamp-1 text-[11px] text-white/70">
+                          {template.meta}
+                        </p>
+                      </div>
+                      <ArrowRight className="mt-1 h-4 w-4 flex-shrink-0 text-white/40 transition-all group-hover:translate-x-0.5 group-hover:text-[#efc4be]" />
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
