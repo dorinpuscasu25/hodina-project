@@ -45,9 +45,14 @@ export const Header = ({ onNavigate, onRequestAuth, currentPage, showSearch = tr
           <div className="flex items-center gap-8">
             <button
               onClick={() => onNavigate('home')}
-              className="text-2xl font-bold text-[#002626] hover:opacity-80 transition-opacity"
+              className="flex items-center hover:opacity-80 transition-opacity"
+              aria-label="Hodina"
             >
-              Hodina
+              <img
+                src="/hodina-logo.png"
+                alt="Hodina"
+                className="h-8 w-auto sm:h-9"
+              />
             </button>
 
             <nav className="hidden md:flex items-center gap-6">
