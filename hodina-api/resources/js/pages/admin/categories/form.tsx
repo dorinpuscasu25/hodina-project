@@ -55,8 +55,14 @@ interface CategoryFormPageProps {
     locales: LocaleOption[];
 }
 
-const clone = <T,>(value: T): T =>
-    JSON.parse(JSON.stringify(value)) as T;
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+const normalizePayload = (data: CategoryFormData) => ({
+    ...data,
+    parent_id: data.parent_id ?? '',
+    is_active: data.is_active ? '1' : '0',
+    remove_image: data.remove_image ? '1' : '0',
+});
 
 const selectClassName =
     'border-input focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]';
@@ -80,7 +86,7 @@ export default function CategoryFormPage({
         () =>
             form.data.remove_image
                 ? null
-                : localPreview ?? form.data.image_url ?? null,
+                : (localPreview ?? form.data.image_url ?? null),
         [form.data.image_url, form.data.remove_image, localPreview],
     );
 
@@ -99,19 +105,29 @@ export default function CategoryFormPage({
         event.preventDefault();
 
         if (isEdit) {
-            form.transform((data) => ({
-                ...data,
-                _method: 'patch',
-            })).post(`/admin/categories/${category.id}`, {
+            if (form.data.image_file) {
+                form.transform((data) => ({
+                    ...normalizePayload(data),
+                    _method: 'patch',
+                }));
+                form.post(`/admin/categories/${category.id}`, {
+                    preserveScroll: true,
+                    forceFormData: true,
+                });
+                return;
+            }
+
+            form.transform(normalizePayload);
+            form.patch(`/admin/categories/${category.id}`, {
                 preserveScroll: true,
-                forceFormData: true,
             });
             return;
         }
 
+        form.transform(normalizePayload);
         form.post('/admin/categories', {
             preserveScroll: true,
-            forceFormData: true,
+            forceFormData: Boolean(form.data.image_file),
         });
     };
 
@@ -192,9 +208,7 @@ export default function CategoryFormPage({
                                             form.setData(
                                                 'parent_id',
                                                 event.target.value
-                                                    ? Number(
-                                                          event.target.value,
-                                                      )
+                                                    ? Number(event.target.value)
                                                     : null,
                                             )
                                         }
@@ -266,7 +280,8 @@ export default function CategoryFormPage({
                                                 <span
                                                     className="text-lg font-semibold"
                                                     style={{
-                                                        color: form.data.accent_color,
+                                                        color: form.data
+                                                            .accent_color,
                                                     }}
                                                 >
                                                     {(
@@ -328,9 +343,7 @@ export default function CategoryFormPage({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="accent_color">
-                                        Accent
-                                    </Label>
+                                    <Label htmlFor="accent_color">Accent</Label>
                                     <Input
                                         id="accent_color"
                                         type="color"
@@ -367,7 +380,9 @@ export default function CategoryFormPage({
                             <div className="space-y-3">
                                 <Label>Traduceri</Label>
                                 <p className="text-xs text-muted-foreground">
-                                    Numele e obligatoriu minim într-o limbă. Celelalte se completează automat cu prima traducere existentă.
+                                    Numele e obligatoriu minim într-o limbă.
+                                    Celelalte se completează automat cu prima
+                                    traducere existentă.
                                 </p>
                                 <LocaleTabs
                                     locales={locales}
@@ -375,7 +390,9 @@ export default function CategoryFormPage({
                                     onChange={setActiveLocale}
                                 />
                                 {form.errors.name ? (
-                                    <p className="text-sm text-destructive">{form.errors.name}</p>
+                                    <p className="text-sm text-destructive">
+                                        {form.errors.name}
+                                    </p>
                                 ) : null}
                             </div>
 
@@ -386,7 +403,9 @@ export default function CategoryFormPage({
                                     </Label>
                                     <Input
                                         id="name"
-                                        value={form.data.name[activeLocale] ?? ''}
+                                        value={
+                                            form.data.name[activeLocale] ?? ''
+                                        }
                                         onChange={(event) =>
                                             form.setData('name', {
                                                 ...form.data.name,
@@ -409,8 +428,9 @@ export default function CategoryFormPage({
                                     <Textarea
                                         id="description"
                                         value={
-                                            form.data.description[activeLocale] ??
-                                            ''
+                                            form.data.description[
+                                                activeLocale
+                                            ] ?? ''
                                         }
                                         onChange={(event) =>
                                             form.setData('description', {
@@ -430,7 +450,9 @@ export default function CategoryFormPage({
                                         : 'Creeaza categoria'}
                                 </Button>
                                 <Button asChild type="button" variant="outline">
-                                    <Link href="/admin/categories">Renunta</Link>
+                                    <Link href="/admin/categories">
+                                        Renunta
+                                    </Link>
                                 </Button>
                             </div>
                         </form>

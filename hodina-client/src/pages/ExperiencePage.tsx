@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Home,
   MapPin,
   MessageCircle,
   Share2,
@@ -24,13 +23,12 @@ import {
   isExperienceListing,
 } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
-import type { AccommodationListing, ExperienceListing, ExperienceSession, ListingKind } from '../types';
+import type { AccommodationListing, Booking, ExperienceListing, ExperienceSession, ListingKind } from '../types';
 
 interface ExperiencePageProps {
   listingIdentifier: string;
   listingKind: ListingKind;
   onNavigate: (page: string, data?: Record<string, unknown>) => void;
-  onRequestAuth: (mode?: 'login' | 'register') => void;
 }
 
 const formatSessionBadge = (iso: string | null) => {
@@ -47,13 +45,13 @@ export const ExperiencePage = ({
   listingIdentifier,
   listingKind,
   onNavigate,
-  onRequestAuth,
 }: ExperiencePageProps) => {
   const { t, language } = useLanguage();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, token, user } = useAuth();
   const [listing, setListing] = useState<ExperienceListing | AccommodationListing | null>(null);
   const [sessions, setSessions] = useState<ExperienceSession[]>([]);
   const [related, setRelated] = useState<Array<ExperienceListing | AccommodationListing>>([]);
+  const [activeConversationBooking, setActiveConversationBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -123,6 +121,45 @@ export const ExperiencePage = ({
     };
   }, [language, listingIdentifier, listingKind]);
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadActiveConversationBooking() {
+      setActiveConversationBooking(null);
+
+      if (!listing || !token || !isAuthenticated || !user?.email_verified) {
+        return;
+      }
+
+      try {
+        const response = await apiRequest<{ data: Booking[] }>('/client/bookings', { token });
+        if (ignore) return;
+
+        const expectedBookableType = listingKind === 'accommodation' ? 'Accommodation' : 'Experience';
+        const matchingBooking =
+          response.data.find(
+            (booking) =>
+              booking.chat_enabled &&
+              (booking.status === 'confirmed' || booking.status === 'completed') &&
+              booking.bookable_type === expectedBookableType &&
+              booking.bookable?.id === listing.id,
+          ) ?? null;
+
+        setActiveConversationBooking(matchingBooking);
+      } catch {
+        if (!ignore) {
+          setActiveConversationBooking(null);
+        }
+      }
+    }
+
+    void loadActiveConversationBooking();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isAuthenticated, listing, listingKind, token, user?.email_verified]);
+
   const images = useMemo(() => {
     if (!listing) return [];
     const source = listing.gallery?.length ? listing.gallery : listing.cover_image ? [listing.cover_image] : [];
@@ -159,6 +196,11 @@ export const ExperiencePage = ({
       kind: listingKind,
       ...(sessionId ? { sessionId } : {}),
     });
+  };
+
+  const goToHostConversation = () => {
+    if (!activeConversationBooking) return;
+    onNavigate('messages', { bookingId: activeConversationBooking.id });
   };
 
   const canonicalPath = listing
@@ -229,6 +271,7 @@ export const ExperiencePage = ({
           : 'per night';
 
   const locationString = [listing.city, listing.country].filter(Boolean).join(', ') || 'Moldova';
+  const listingLocationName = isExperienceListing(listing) ? listing.location_name : null;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-white pb-28 md:pb-0">
@@ -589,9 +632,9 @@ export const ExperiencePage = ({
                 <h2 className="mb-4 text-xl font-bold text-gray-900 sm:text-2xl">
                   {language === 'ro' ? 'Unde se întâmplă' : language === 'ru' ? 'Где это' : 'Where it happens'}
                 </h2>
-                {listing.location_name || listing.address || listing.city ? (
+                {listingLocationName || listing.address || listing.city ? (
                   <p className="mb-3 text-sm text-gray-600 break-words">
-                    {[listing.location_name, listing.address, listing.city, listing.country]
+                    {[listingLocationName, listing.address, listing.city, listing.country]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
@@ -746,25 +789,15 @@ export const ExperiencePage = ({
                 {t.experience.reserve}
               </button>
 
-              {isAuthenticated ? (
+              {activeConversationBooking ? (
                 <button
-                  onClick={() => onNavigate('bookings')}
+                  onClick={goToHostConversation}
                   className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#002626] py-3 font-semibold text-[#002626] transition-colors hover:bg-[#002626] hover:text-white"
                 >
                   <MessageCircle className="h-5 w-5" />
-                  {user?.email_verified
-                    ? language === 'ro' ? 'Rezervările mele' : language === 'ru' ? 'Мои брони' : 'My bookings'
-                    : language === 'ro' ? 'Confirmă emailul' : language === 'ru' ? 'Подтвердите email' : 'Verify email'}
+                  {language === 'ro' ? 'Comunică cu hostul' : language === 'ru' ? 'Написать хозяину' : 'Message host'}
                 </button>
-              ) : (
-                <button
-                  onClick={() => onRequestAuth('login')}
-                  className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#002626] py-3 font-semibold text-[#002626] transition-colors hover:bg-[#002626] hover:text-white"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  {language === 'ro' ? 'Intră în cont' : language === 'ru' ? 'Войти' : 'Sign in'}
-                </button>
-              )}
+              ) : null}
 
               <p className="mb-6 text-center text-sm text-gray-600">
                 {language === 'ro' ? 'Plata se face la locație, după confirmare.' : language === 'ru' ? 'Оплата на месте после подтверждения.' : 'Payment on-site after confirmation.'}

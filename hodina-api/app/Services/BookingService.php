@@ -21,6 +21,7 @@ class BookingService
                 ->findOrFail($session->id);
 
             $partySize = max(1, (int) $payload['adults'] + (int) $payload['children']);
+            $totalGuests = $partySize + (int) $payload['infants'];
 
             if ($session->status !== ExperienceSession::STATUS_SCHEDULED) {
                 throw ValidationException::withMessages([
@@ -28,13 +29,20 @@ class BookingService
                 ]);
             }
 
-            if ($session->reserved_guests + $partySize > $session->capacity) {
+            if ($session->reserved_guests + $totalGuests > $session->capacity) {
                 throw ValidationException::withMessages([
                     'session' => 'There are not enough places left for this experience.',
                 ]);
             }
 
             $experience = $session->experience;
+
+            if ($experience->max_guests !== null && $totalGuests > $experience->max_guests) {
+                throw ValidationException::withMessages([
+                    'guests' => "This experience allows a maximum of {$experience->max_guests} guests.",
+                ]);
+            }
+
             $status = $experience->is_instant_book ? Booking::STATUS_CONFIRMED : Booking::STATUS_PENDING;
             $subtotal = $experience->price_mode === 'per_group'
                 ? (float) $experience->price_amount
@@ -66,7 +74,7 @@ class BookingService
                 'confirmed_at' => $status === Booking::STATUS_CONFIRMED ? now() : null,
             ]);
 
-            $session->increment('reserved_guests', $partySize);
+            $session->increment('reserved_guests', $totalGuests);
 
             if ($booking->isChatEnabled()) {
                 $booking->conversation()->firstOrCreate(

@@ -21,11 +21,9 @@ import type { AuthPayload, ListingKind } from './types';
 
 function ExperienceRoute({
   onNavigate,
-  onRequestAuth,
   kind,
 }: {
   onNavigate: (page: string, data?: NavigationData) => void;
-  onRequestAuth: (mode?: 'login' | 'register') => void;
   kind: ListingKind;
 }) {
   const { identifier = '' } = useParams();
@@ -35,7 +33,6 @@ function ExperienceRoute({
       listingIdentifier={identifier}
       listingKind={kind}
       onNavigate={onNavigate}
-      onRequestAuth={onRequestAuth}
     />
   );
 }
@@ -199,11 +196,11 @@ function AppShell() {
           <Route path="/explore" element={<ListingPage onNavigate={handleNavigate} />} />
           <Route
             path="/experiences/:identifier"
-            element={<ExperienceRoute onNavigate={handleNavigate} onRequestAuth={openAuth} kind="experience" />}
+            element={<ExperienceRoute onNavigate={handleNavigate} kind="experience" />}
           />
           <Route
             path="/stays/:identifier"
-            element={<ExperienceRoute onNavigate={handleNavigate} onRequestAuth={openAuth} kind="accommodation" />}
+            element={<ExperienceRoute onNavigate={handleNavigate} kind="accommodation" />}
           />
           <Route
             path="/book/experiences/:identifier"

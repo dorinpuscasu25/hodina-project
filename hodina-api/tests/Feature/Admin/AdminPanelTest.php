@@ -41,7 +41,6 @@ class AdminPanelTest extends TestCase
         $this->actingAs($admin)
             ->post('/admin/categories', [
                 'type' => Category::TYPE_AMENITY,
-                'code' => 'fire-pit',
                 'name' => [
                     'en' => 'Fire pit',
                     'ro' => 'Vatra de foc',
@@ -59,10 +58,56 @@ class AdminPanelTest extends TestCase
             ])
             ->assertRedirect('/admin/categories');
 
-        $category = Category::query()->where('code', 'fire-pit')->firstOrFail();
+        $category = Category::query()->firstOrFail();
 
         $this->assertSame('Vatra de foc', $category->getTranslation('name', 'ro'));
         $this->assertSame('Warm evenings', $category->getTranslation('description', 'en'));
+    }
+
+    public function test_admin_can_edit_an_existing_category(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $category = Category::query()->create([
+            'type' => Category::TYPE_EXPERIENCE_CATEGORY,
+            'name' => [
+                'en' => 'Old name',
+                'ro' => 'Nume vechi',
+                'ru' => 'Старое имя',
+            ],
+            'description' => null,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs($admin)
+            ->post("/admin/categories/{$category->id}", [
+                '_method' => 'patch',
+                'type' => Category::TYPE_EXPERIENCE_CATEGORY,
+                'parent_id' => '',
+                'name' => [
+                    'en' => 'New name',
+                    'ro' => 'Nume nou',
+                    'ru' => '',
+                ],
+                'description' => [
+                    'en' => 'Updated description',
+                    'ro' => '',
+                    'ru' => '',
+                ],
+                'card_background' => '#ffffff',
+                'accent_color' => '#111111',
+                'sort_order' => 7,
+                'is_active' => '0',
+                'remove_image' => 'false',
+            ])
+            ->assertRedirect('/admin/categories');
+
+        $category->refresh();
+
+        $this->assertSame('Nume nou', $category->getTranslation('name', 'ro'));
+        $this->assertSame('Updated description', $category->getTranslation('description', 'en'));
+        $this->assertFalse($category->is_active);
+        $this->assertSame(7, $category->sort_order);
     }
 
     public function test_admin_can_create_a_guesthouse_profile(): void

@@ -88,7 +88,7 @@ class CategoryController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        return $this->persist($request, new Category());
+        return $this->persist($request, new Category);
     }
 
     public function update(Request $request, Category $category): RedirectResponse
@@ -98,6 +98,8 @@ class CategoryController extends Controller
 
     private function persist(Request $request, Category $category): RedirectResponse
     {
+        $this->normalizeCategoryRequest($request);
+
         $rules = [
             'type' => ['required', Rule::in([
                 Category::TYPE_EXPERIENCE_CATEGORY,
@@ -168,6 +170,25 @@ class CategoryController extends Controller
         $category->save();
 
         return to_route('admin.categories.index');
+    }
+
+    private function normalizeCategoryRequest(Request $request): void
+    {
+        if ($request->has('parent_id') && in_array($request->input('parent_id'), ['', 'null', 'undefined'], true)) {
+            $request->merge(['parent_id' => null]);
+        }
+
+        foreach (['is_active', 'remove_image'] as $field) {
+            if (! $request->has($field) || is_bool($request->input($field))) {
+                continue;
+            }
+
+            $value = filter_var($request->input($field), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+            if ($value !== null) {
+                $request->merge([$field => $value]);
+            }
+        }
     }
 
     private function categoryTableRow(Category $category): array

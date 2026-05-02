@@ -186,7 +186,7 @@ export const BookingPage = ({
     return (listing as AccommodationListing).max_guests ?? null;
   }, [listing, listingKind, selectedSession]);
 
-  const maxGuestsExceeded = maxGuestsForListing !== null && adults + children > maxGuestsForListing;
+  const maxGuestsExceeded = maxGuestsForListing !== null && totalGuests > maxGuestsForListing;
 
   const subtotal = useMemo(() => {
     if (!listing) {
@@ -656,11 +656,10 @@ export const BookingPage = ({
                     value: infants,
                     setter: setInfants,
                     min: 0,
-                    countsTowardMax: false,
+                    countsTowardMax: true,
                   },
                 ].map((item) => {
-                  const payingGuests = adults + children;
-                  const atMax = item.countsTowardMax && maxGuestsForListing !== null && payingGuests >= maxGuestsForListing;
+                  const atMax = item.countsTowardMax && maxGuestsForListing !== null && totalGuests >= maxGuestsForListing;
 
                   return (
                     <div key={item.label} className="flex items-center justify-between">

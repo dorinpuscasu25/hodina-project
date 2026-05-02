@@ -153,4 +153,69 @@ class BookingFlowTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.body', 'Multumesc, ajungem la timp.');
     }
+
+    public function test_guest_cannot_book_more_people_than_experience_allows(): void
+    {
+        $guesthouse = Guesthouse::create([
+            'name' => ['ro' => 'Pensiunea Demo'],
+            'slug' => 'pensiunea-demo',
+            'locale' => 'ro',
+            'currency' => 'MDL',
+            'country' => 'Moldova',
+            'is_active' => true,
+        ]);
+
+        $category = Category::create([
+            'type' => Category::TYPE_EXPERIENCE_CATEGORY,
+            'code' => 'wine',
+            'name' => ['ro' => 'Vin'],
+            'slug' => ['ro' => 'vin'],
+            'is_active' => true,
+        ]);
+
+        $guest = User::factory()->withoutTwoFactor()->create([
+            'role' => User::ROLE_GUEST,
+            'email_verified_at' => now(),
+        ]);
+
+        $experience = Experience::create([
+            'guesthouse_id' => $guesthouse->id,
+            'category_id' => $category->id,
+            'status' => Experience::STATUS_PUBLISHED,
+            'slug' => 'degustare-vin',
+            'title' => ['ro' => 'Degustare de vin'],
+            'price_amount' => 500,
+            'currency' => 'MDL',
+            'price_mode' => 'per_person',
+            'duration_minutes' => 120,
+            'max_guests' => 4,
+            'difficulty' => 'easy',
+        ]);
+
+        $session = ExperienceSession::create([
+            'experience_id' => $experience->id,
+            'starts_at' => now()->addDays(5)->setTime(14, 0),
+            'ends_at' => now()->addDays(5)->setTime(16, 0),
+            'capacity' => 10,
+            'reserved_guests' => 0,
+            'status' => ExperienceSession::STATUS_SCHEDULED,
+            'is_manual' => true,
+        ]);
+
+        Sanctum::actingAs($guest);
+
+        $this->postJson("/api/v1/client/bookings/experiences/{$session->id}", [
+            'adults' => 4,
+            'children' => 0,
+            'infants' => 1,
+            'contact_name' => 'Ion Test',
+            'contact_email' => 'ion@example.com',
+            'contact_phone' => '+37360000000',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('guests');
+
+        $this->assertDatabaseCount('bookings', 0);
+        $this->assertSame(0, $session->refresh()->reserved_guests);
+    }
 }
